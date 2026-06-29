@@ -1,0 +1,29 @@
+rules_version = '2';
+
+// ==========================================================================
+// PERINGATAN: Rules ini TERBUKA (tanpa autentikasi) dan hanya untuk
+// pengujian/skripsi. Aplikasi saat ini login secara lokal (belum pakai
+// FirebaseAuth), sehingga request.auth = null. Untuk produksi, wire-up
+// FirebaseAuth lalu ganti `if true` menjadi `if request.auth != null`.
+// ==========================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Hanya 4 koleksi yang dipakai aplikasi
+    match /katalog/{doc} {
+      allow read, write: if true;
+    }
+    match /mutasi/{doc} {
+      allow read, write: if true;
+    }
+    match /transfer/{doc} {
+      allow read, write: if true;
+    }
+    match /users/{doc} {
+      allow read, write: if true;
+    }
+
+    // Koleksi lain tetap tertutup secara default (tidak ada match = ditolak)
+  }
+}

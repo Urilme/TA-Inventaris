@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "206045885133",
+    "project_id": "inventaris-9f544",
+    "storage_bucket": "inventaris-9f544.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:206045885133:android:944d98d1d75fc2ddd3ef84",
+        "android_client_info": {
+          "package_name": "com.ta.konstruksi"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBQaElkjrqXt38YAE9O5VDy5KHo_DKegh8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

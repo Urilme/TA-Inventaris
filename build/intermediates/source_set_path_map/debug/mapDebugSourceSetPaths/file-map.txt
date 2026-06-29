@@ -1,0 +1,79 @@
+com.ta.konstruksi-play-services-auth-20.7.0-0 C:\Users\acer\.gradle\caches\8.12\transforms\031780e9cb98d41b4d9a39dbad28d14f\transformed\play-services-auth-20.7.0\res
+com.ta.konstruksi-work-runtime-2.10.0-1 C:\Users\acer\.gradle\caches\8.12\transforms\032156b8ac4ed6bd4d0da37e6a64b2f0\transformed\work-runtime-2.10.0\res
+com.ta.konstruksi-sqlite-framework-2.4.0-2 C:\Users\acer\.gradle\caches\8.12\transforms\06d899cfbff198118d2e892749bb40f4\transformed\sqlite-framework-2.4.0\res
+com.ta.konstruksi-credentials-play-services-auth-1.2.0-rc01-3 C:\Users\acer\.gradle\caches\8.12\transforms\0877715bdfd0e62004a45b41d2c57d21\transformed\credentials-play-services-auth-1.2.0-rc01\res
+com.ta.konstruksi-room-ktx-2.6.1-4 C:\Users\acer\.gradle\caches\8.12\transforms\0ca082bc7564b67a523661cf9d026435\transformed\room-ktx-2.6.1\res
+com.ta.konstruksi-lifecycle-runtime-release-5 C:\Users\acer\.gradle\caches\8.12\transforms\0ccd375ab981e60de0557765e083ff6a\transformed\lifecycle-runtime-release\res
+com.ta.konstruksi-lifecycle-livedata-core-ktx-2.8.7-6 C:\Users\acer\.gradle\caches\8.12\transforms\124b1e3d8adec99a4584a2049df81be5\transformed\lifecycle-livedata-core-ktx-2.8.7\res
+com.ta.konstruksi-lifecycle-viewmodel-compose-release-7 C:\Users\acer\.gradle\caches\8.12\transforms\176a09d4a5ad1d54b8e2c5cc47b0ccf0\transformed\lifecycle-viewmodel-compose-release\res
+com.ta.konstruksi-room-runtime-2.6.1-8 C:\Users\acer\.gradle\caches\8.12\transforms\179a8fc7685485c82810aa10c423f678\transformed\room-runtime-2.6.1\res
+com.ta.konstruksi-core-common-2.0.3-9 C:\Users\acer\.gradle\caches\8.12\transforms\213be9b1052ae84080716902c0681634\transformed\core-common-2.0.3\res
+com.ta.konstruksi-ui-tooling-data-release-10 C:\Users\acer\.gradle\caches\8.12\transforms\264de39a425207751a8d5ed1e4629650\transformed\ui-tooling-data-release\res
+com.ta.konstruksi-navigation-runtime-2.8.4-11 C:\Users\acer\.gradle\caches\8.12\transforms\282982dfd3a0e9e8034ec547a4657a67\transformed\navigation-runtime-2.8.4\res
+com.ta.konstruksi-core-1.13.1-12 C:\Users\acer\.gradle\caches\8.12\transforms\3211829bdaab4fd4a963452eafc82ba6\transformed\core-1.13.1\res
+com.ta.konstruksi-navigation-common-2.8.4-13 C:\Users\acer\.gradle\caches\8.12\transforms\322da7fac6748e80cec1271463b2d031\transformed\navigation-common-2.8.4\res
+com.ta.konstruksi-ui-tooling-release-14 C:\Users\acer\.gradle\caches\8.12\transforms\34fe5d198028b3b9ec2b4946ca2919d2\transformed\ui-tooling-release\res
+com.ta.konstruksi-activity-ktx-1.9.3-15 C:\Users\acer\.gradle\caches\8.12\transforms\3541738073ddb01d7bf713d276f39568\transformed\activity-ktx-1.9.3\res
+com.ta.konstruksi-lifecycle-runtime-ktx-release-16 C:\Users\acer\.gradle\caches\8.12\transforms\364c6477bdeb8134d8530fb17105cf6e\transformed\lifecycle-runtime-ktx-release\res
+com.ta.konstruksi-savedstate-1.2.1-17 C:\Users\acer\.gradle\caches\8.12\transforms\38304a3a616145221e790189894e9f6d\transformed\savedstate-1.2.1\res
+com.ta.konstruksi-material3-release-18 C:\Users\acer\.gradle\caches\8.12\transforms\3a9c0d08d4fb1cc760cbcfc793c995f7\transformed\material3-release\res
+com.ta.konstruksi-foundation-release-19 C:\Users\acer\.gradle\caches\8.12\transforms\3d022cea46d69eb9d1128930b19b84ba\transformed\foundation-release\res
+com.ta.konstruksi-core-ktx-1.13.1-20 C:\Users\acer\.gradle\caches\8.12\transforms\4146df56f18b80b9c89c1fdcd9aec0f8\transformed\core-ktx-1.13.1\res
+com.ta.konstruksi-navigation-compose-2.8.4-21 C:\Users\acer\.gradle\caches\8.12\transforms\42f5088b7ec25e7b1f93905c7c89bfa8\transformed\navigation-compose-2.8.4\res
+com.ta.konstruksi-lifecycle-viewmodel-ktx-2.8.7-22 C:\Users\acer\.gradle\caches\8.12\transforms\4456dcaccade1673544cbca911ad5870\transformed\lifecycle-viewmodel-ktx-2.8.7\res
+com.ta.konstruksi-credentials-1.2.0-rc01-23 C:\Users\acer\.gradle\caches\8.12\transforms\45b977c249a1b9a9c57274e76378699e\transformed\credentials-1.2.0-rc01\res
+com.ta.konstruksi-ui-geometry-release-24 C:\Users\acer\.gradle\caches\8.12\transforms\45c8233b535e4d39ade23d8a2e450406\transformed\ui-geometry-release\res
+com.ta.konstruksi-fragment-1.5.1-25 C:\Users\acer\.gradle\caches\8.12\transforms\4ca35bba54610b55221c8d997642bb15\transformed\fragment-1.5.1\res
+com.ta.konstruksi-material-release-26 C:\Users\acer\.gradle\caches\8.12\transforms\50e1fb097b38341acdf08589f05a5380\transformed\material-release\res
+com.ta.konstruksi-ui-util-release-27 C:\Users\acer\.gradle\caches\8.12\transforms\5f5eabfac02121b18c980cca041c7c0b\transformed\ui-util-release\res
+com.ta.konstruksi-hilt-work-1.2.0-28 C:\Users\acer\.gradle\caches\8.12\transforms\60fdf80f92ebbb10a1db5724acaa63fa\transformed\hilt-work-1.2.0\res
+com.ta.konstruksi-ui-tooling-preview-release-29 C:\Users\acer\.gradle\caches\8.12\transforms\6324868b86e72d43404275edcaf0d602\transformed\ui-tooling-preview-release\res
+com.ta.konstruksi-savedstate-ktx-1.2.1-30 C:\Users\acer\.gradle\caches\8.12\transforms\634ab8e80d1033072bf643c046fd3ea4\transformed\savedstate-ktx-1.2.1\res
+com.ta.konstruksi-tracing-1.2.0-31 C:\Users\acer\.gradle\caches\8.12\transforms\792c7429fbb827107534b6f225e22cd4\transformed\tracing-1.2.0\res
+com.ta.konstruksi-material-icons-core-release-32 C:\Users\acer\.gradle\caches\8.12\transforms\7c4052bdc1163edb6c1901071737916e\transformed\material-icons-core-release\res
+com.ta.konstruksi-tracing-ktx-1.2.0-33 C:\Users\acer\.gradle\caches\8.12\transforms\82caf6fb0f58b5b954764111866d3498\transformed\tracing-ktx-1.2.0\res
+com.ta.konstruksi-hilt-navigation-1.2.0-34 C:\Users\acer\.gradle\caches\8.12\transforms\82f7588f22e2a21efa0497ecaab4c3a2\transformed\hilt-navigation-1.2.0\res
+com.ta.konstruksi-lifecycle-process-2.8.7-35 C:\Users\acer\.gradle\caches\8.12\transforms\8ca48ce8c68441c9b5bbeb8cb9aa56ec\transformed\lifecycle-process-2.8.7\res
+com.ta.konstruksi-animation-release-36 C:\Users\acer\.gradle\caches\8.12\transforms\8d09bfa3570bd81afb0c3aa298ee69b5\transformed\animation-release\res
+com.ta.konstruksi-lifecycle-livedata-2.8.7-37 C:\Users\acer\.gradle\caches\8.12\transforms\8e422f72017a3de8dd29feaf57aa602a\transformed\lifecycle-livedata-2.8.7\res
+com.ta.konstruksi-runtime-release-38 C:\Users\acer\.gradle\caches\8.12\transforms\989ce91cc65f902bc5fb604cd9790fe0\transformed\runtime-release\res
+com.ta.konstruksi-ui-text-release-39 C:\Users\acer\.gradle\caches\8.12\transforms\9b169afb4c8c4541080f3280e31a9f38\transformed\ui-text-release\res
+com.ta.konstruksi-startup-runtime-1.1.1-40 C:\Users\acer\.gradle\caches\8.12\transforms\9be9541b0874569984dc99fd492c350b\transformed\startup-runtime-1.1.1\res
+com.ta.konstruksi-customview-poolingcontainer-1.0.0-41 C:\Users\acer\.gradle\caches\8.12\transforms\9db021032b8fcb9edd27ec8a3aacd59a\transformed\customview-poolingcontainer-1.0.0\res
+com.ta.konstruksi-annotation-experimental-1.4.1-42 C:\Users\acer\.gradle\caches\8.12\transforms\9e00675e01d52b1db17185410af2e0f0\transformed\annotation-experimental-1.4.1\res
+com.ta.konstruksi-sqlite-2.4.0-43 C:\Users\acer\.gradle\caches\8.12\transforms\a0e4fba760cbe1516d6ddc6bae32c6c4\transformed\sqlite-2.4.0\res
+com.ta.konstruksi-core-runtime-2.2.0-44 C:\Users\acer\.gradle\caches\8.12\transforms\aedfba9f3eab35fe8bc37be31a990aec\transformed\core-runtime-2.2.0\res
+com.ta.konstruksi-lifecycle-service-2.8.7-45 C:\Users\acer\.gradle\caches\8.12\transforms\af4ebfa33d3496fe6c2204c818bd9aea\transformed\lifecycle-service-2.8.7\res
+com.ta.konstruksi-play-services-basement-18.4.0-46 C:\Users\acer\.gradle\caches\8.12\transforms\b1dc89aa442776ab5b6a4acb168e7c46\transformed\play-services-basement-18.4.0\res
+com.ta.konstruksi-hilt-navigation-compose-1.2.0-47 C:\Users\acer\.gradle\caches\8.12\transforms\bada4caa1ec0a768e65e35d97aee1a3c\transformed\hilt-navigation-compose-1.2.0\res
+com.ta.konstruksi-material-icons-extended-release-48 C:\Users\acer\.gradle\caches\8.12\transforms\c0023af77e940ee2c672e60b9f650b6c\transformed\material-icons-extended-release\res
+com.ta.konstruksi-browser-1.4.0-49 C:\Users\acer\.gradle\caches\8.12\transforms\c31f18fc5df8b5e5b3111234c9725abb\transformed\browser-1.4.0\res
+com.ta.konstruksi-profileinstaller-1.3.1-50 C:\Users\acer\.gradle\caches\8.12\transforms\c393c9c2620c5ac64ca3f0b5c44da609\transformed\profileinstaller-1.3.1\res
+com.ta.konstruksi-lifecycle-runtime-compose-release-51 C:\Users\acer\.gradle\caches\8.12\transforms\c498bf1f1679ea7a6233a545af5e3dac\transformed\lifecycle-runtime-compose-release\res
+com.ta.konstruksi-ui-release-52 C:\Users\acer\.gradle\caches\8.12\transforms\c8ec996e309e8498cfad8729621da493\transformed\ui-release\res
+com.ta.konstruksi-animation-core-release-53 C:\Users\acer\.gradle\caches\8.12\transforms\c97f331c0fccb53b9778a400435b70cd\transformed\animation-core-release\res
+com.ta.konstruksi-activity-1.9.3-54 C:\Users\acer\.gradle\caches\8.12\transforms\c9e825b921f4f95d019263fa2bfce1d1\transformed\activity-1.9.3\res
+com.ta.konstruksi-emoji2-1.3.0-55 C:\Users\acer\.gradle\caches\8.12\transforms\cff5a48b75796b94645ce1db6630f393\transformed\emoji2-1.3.0\res
+com.ta.konstruksi-graphics-path-1.0.1-56 C:\Users\acer\.gradle\caches\8.12\transforms\d1be1267e09e471a24d7cb0492240b50\transformed\graphics-path-1.0.1\res
+com.ta.konstruksi-foundation-layout-release-57 C:\Users\acer\.gradle\caches\8.12\transforms\d65016c65855e676000d73ba733a59b3\transformed\foundation-layout-release\res
+com.ta.konstruksi-lifecycle-viewmodel-release-58 C:\Users\acer\.gradle\caches\8.12\transforms\dc279b19c50e772aa15f57a280f6930b\transformed\lifecycle-viewmodel-release\res
+com.ta.konstruksi-lifecycle-viewmodel-savedstate-2.8.7-59 C:\Users\acer\.gradle\caches\8.12\transforms\de3a8c0c108e925e94a44eb1f0a38ed4\transformed\lifecycle-viewmodel-savedstate-2.8.7\res
+com.ta.konstruksi-navigation-common-ktx-2.8.4-60 C:\Users\acer\.gradle\caches\8.12\transforms\e39ac94a1532d3b73238a379de401c6b\transformed\navigation-common-ktx-2.8.4\res
+com.ta.konstruksi-firebase-common-21.0.0-61 C:\Users\acer\.gradle\caches\8.12\transforms\e45ac21bf5669462582a5d909a104df0\transformed\firebase-common-21.0.0\res
+com.ta.konstruksi-lifecycle-livedata-core-2.8.7-62 C:\Users\acer\.gradle\caches\8.12\transforms\e562364ac7a52e8f42c1fa254a89fdef\transformed\lifecycle-livedata-core-2.8.7\res
+com.ta.konstruksi-runtime-saveable-release-63 C:\Users\acer\.gradle\caches\8.12\transforms\e6d9d1475d5f831413607139e6620cb4\transformed\runtime-saveable-release\res
+com.ta.konstruksi-material-ripple-release-64 C:\Users\acer\.gradle\caches\8.12\transforms\eb351cdaaa3358c56da87a27710815a4\transformed\material-ripple-release\res
+com.ta.konstruksi-navigation-runtime-ktx-2.8.4-65 C:\Users\acer\.gradle\caches\8.12\transforms\f04c805d0b18ee3349ffd709fb51eff0\transformed\navigation-runtime-ktx-2.8.4\res
+com.ta.konstruksi-ui-unit-release-66 C:\Users\acer\.gradle\caches\8.12\transforms\f04d951952174b9626b5b0180db60f60\transformed\ui-unit-release\res
+com.ta.konstruksi-play-services-base-18.0.1-67 C:\Users\acer\.gradle\caches\8.12\transforms\f0a9e129ee2f793171d1bb25b0ab7017\transformed\play-services-base-18.0.1\res
+com.ta.konstruksi-activity-compose-1.9.3-68 C:\Users\acer\.gradle\caches\8.12\transforms\f25a33186a8e0d40caddebf1d62f26cf\transformed\activity-compose-1.9.3\res
+com.ta.konstruksi-ui-graphics-release-69 C:\Users\acer\.gradle\caches\8.12\transforms\fbfbec96b1fbe1bab34b8107a53a8074\transformed\ui-graphics-release\res
+com.ta.konstruksi-work-runtime-ktx-2.10.0-70 C:\Users\acer\.gradle\caches\8.12\transforms\fedbab494f28328c1b0b843c63a5d395\transformed\work-runtime-ktx-2.10.0\res
+com.ta.konstruksi-pngs-71 C:\Users\acer\OneDrive\TA\GitHub\TA Inventaris\build\generated\res\pngs\debug
+com.ta.konstruksi-res-72 C:\Users\acer\OneDrive\TA\GitHub\TA Inventaris\build\generated\res\processDebugGoogleServices
+com.ta.konstruksi-resValues-73 C:\Users\acer\OneDrive\TA\GitHub\TA Inventaris\build\generated\res\resValues\debug
+com.ta.konstruksi-packageDebugResources-74 C:\Users\acer\OneDrive\TA\GitHub\TA Inventaris\build\intermediates\incremental\debug\packageDebugResources\merged.dir
+com.ta.konstruksi-packageDebugResources-75 C:\Users\acer\OneDrive\TA\GitHub\TA Inventaris\build\intermediates\incremental\debug\packageDebugResources\stripped.dir
+com.ta.konstruksi-debug-76 C:\Users\acer\OneDrive\TA\GitHub\TA Inventaris\build\intermediates\merged_res\debug\mergeDebugResources
+com.ta.konstruksi-debug-77 C:\Users\acer\OneDrive\TA\GitHub\TA Inventaris\src\debug\res
+com.ta.konstruksi-main-78 C:\Users\acer\OneDrive\TA\GitHub\TA Inventaris\src\main\res
