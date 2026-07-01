@@ -440,40 +440,40 @@ public final class DaggerKonstruksiApp_HiltComponents_SingletonC {
 
     @IdentifierNameString
     private static final class LazyClassKeyProvider {
-      static String com_ta_konstruksi_presentation_viewmodel_MutasiViewModel = "com.ta.konstruksi.presentation.viewmodel.MutasiViewModel";
-
-      static String com_ta_konstruksi_presentation_viewmodel_DashboardViewModel = "com.ta.konstruksi.presentation.viewmodel.DashboardViewModel";
-
-      static String com_ta_konstruksi_presentation_viewmodel_TransferViewModel = "com.ta.konstruksi.presentation.viewmodel.TransferViewModel";
+      static String com_ta_konstruksi_presentation_viewmodel_AuthViewModel = "com.ta.konstruksi.presentation.viewmodel.AuthViewModel";
 
       static String com_ta_konstruksi_presentation_viewmodel_KatalogViewModel = "com.ta.konstruksi.presentation.viewmodel.KatalogViewModel";
 
-      static String com_ta_konstruksi_presentation_viewmodel_RiwayatViewModel = "com.ta.konstruksi.presentation.viewmodel.RiwayatViewModel";
+      static String com_ta_konstruksi_presentation_viewmodel_TransferViewModel = "com.ta.konstruksi.presentation.viewmodel.TransferViewModel";
 
-      static String com_ta_konstruksi_presentation_viewmodel_AuthViewModel = "com.ta.konstruksi.presentation.viewmodel.AuthViewModel";
+      static String com_ta_konstruksi_presentation_viewmodel_MutasiViewModel = "com.ta.konstruksi.presentation.viewmodel.MutasiViewModel";
 
       static String com_ta_konstruksi_presentation_viewmodel_SyncViewModel = "com.ta.konstruksi.presentation.viewmodel.SyncViewModel";
 
-      @KeepFieldType
-      MutasiViewModel com_ta_konstruksi_presentation_viewmodel_MutasiViewModel2;
+      static String com_ta_konstruksi_presentation_viewmodel_RiwayatViewModel = "com.ta.konstruksi.presentation.viewmodel.RiwayatViewModel";
 
-      @KeepFieldType
-      DashboardViewModel com_ta_konstruksi_presentation_viewmodel_DashboardViewModel2;
-
-      @KeepFieldType
-      TransferViewModel com_ta_konstruksi_presentation_viewmodel_TransferViewModel2;
-
-      @KeepFieldType
-      KatalogViewModel com_ta_konstruksi_presentation_viewmodel_KatalogViewModel2;
-
-      @KeepFieldType
-      RiwayatViewModel com_ta_konstruksi_presentation_viewmodel_RiwayatViewModel2;
+      static String com_ta_konstruksi_presentation_viewmodel_DashboardViewModel = "com.ta.konstruksi.presentation.viewmodel.DashboardViewModel";
 
       @KeepFieldType
       AuthViewModel com_ta_konstruksi_presentation_viewmodel_AuthViewModel2;
 
       @KeepFieldType
+      KatalogViewModel com_ta_konstruksi_presentation_viewmodel_KatalogViewModel2;
+
+      @KeepFieldType
+      TransferViewModel com_ta_konstruksi_presentation_viewmodel_TransferViewModel2;
+
+      @KeepFieldType
+      MutasiViewModel com_ta_konstruksi_presentation_viewmodel_MutasiViewModel2;
+
+      @KeepFieldType
       SyncViewModel com_ta_konstruksi_presentation_viewmodel_SyncViewModel2;
+
+      @KeepFieldType
+      RiwayatViewModel com_ta_konstruksi_presentation_viewmodel_RiwayatViewModel2;
+
+      @KeepFieldType
+      DashboardViewModel com_ta_konstruksi_presentation_viewmodel_DashboardViewModel2;
     }
   }
 
@@ -544,7 +544,7 @@ public final class DaggerKonstruksiApp_HiltComponents_SingletonC {
 
     @IdentifierNameString
     private static final class LazyClassKeyProvider {
-      static String com_ta_konstruksi_presentation_viewmodel_KatalogViewModel = "com.ta.konstruksi.presentation.viewmodel.KatalogViewModel";
+      static String com_ta_konstruksi_presentation_viewmodel_RiwayatViewModel = "com.ta.konstruksi.presentation.viewmodel.RiwayatViewModel";
 
       static String com_ta_konstruksi_presentation_viewmodel_TransferViewModel = "com.ta.konstruksi.presentation.viewmodel.TransferViewModel";
 
@@ -554,12 +554,12 @@ public final class DaggerKonstruksiApp_HiltComponents_SingletonC {
 
       static String com_ta_konstruksi_presentation_viewmodel_SyncViewModel = "com.ta.konstruksi.presentation.viewmodel.SyncViewModel";
 
+      static String com_ta_konstruksi_presentation_viewmodel_KatalogViewModel = "com.ta.konstruksi.presentation.viewmodel.KatalogViewModel";
+
       static String com_ta_konstruksi_presentation_viewmodel_DashboardViewModel = "com.ta.konstruksi.presentation.viewmodel.DashboardViewModel";
 
-      static String com_ta_konstruksi_presentation_viewmodel_RiwayatViewModel = "com.ta.konstruksi.presentation.viewmodel.RiwayatViewModel";
-
       @KeepFieldType
-      KatalogViewModel com_ta_konstruksi_presentation_viewmodel_KatalogViewModel2;
+      RiwayatViewModel com_ta_konstruksi_presentation_viewmodel_RiwayatViewModel2;
 
       @KeepFieldType
       TransferViewModel com_ta_konstruksi_presentation_viewmodel_TransferViewModel2;
@@ -574,10 +574,10 @@ public final class DaggerKonstruksiApp_HiltComponents_SingletonC {
       SyncViewModel com_ta_konstruksi_presentation_viewmodel_SyncViewModel2;
 
       @KeepFieldType
-      DashboardViewModel com_ta_konstruksi_presentation_viewmodel_DashboardViewModel2;
+      KatalogViewModel com_ta_konstruksi_presentation_viewmodel_KatalogViewModel2;
 
       @KeepFieldType
-      RiwayatViewModel com_ta_konstruksi_presentation_viewmodel_RiwayatViewModel2;
+      DashboardViewModel com_ta_konstruksi_presentation_viewmodel_DashboardViewModel2;
     }
 
     private static final class SwitchingProvider<T> implements Provider<T> {

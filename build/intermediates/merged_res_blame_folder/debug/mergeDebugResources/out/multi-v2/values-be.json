@@ -1,7 +1,7 @@
 {
     "logs": [
         {
-            "outputFile": "com.ta.konstruksi-mergeDebugResources-74:/values-be/values-be.xml",
+            "outputFile": "com.ta.konstruksi-mergeDebugResources-3:/values-be/values-be.xml",
             "map": [
                 {
                     "source": "C:\\Users\\acer\\.gradle\\caches\\8.12\\transforms\\b1dc89aa442776ab5b6a4acb168e7c46\\transformed\\play-services-basement-18.4.0\\res\\values-be\\values.xml",
