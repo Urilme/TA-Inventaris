@@ -59,8 +59,13 @@ class FirestoreDataSource @Inject constructor(
     private fun LogMutasiEntity.toMap(): Map<String, Any?> = mapOf(
         "id_transaksi" to id_transaksi,
         "sku_id" to sku_id,
+        "id_mandor" to id_mandor,
+        "id_proyek" to id_proyek,
         "jenis_mutasi" to jenis_mutasi,
         "jumlah" to jumlah,
+        "kondisi_barang" to kondisi_barang,
+        "lokasi_penggunaan" to lokasi_penggunaan,
+        "penanggungjawab" to penanggungjawab,
         "catatan" to catatan,
         "local_timestamp" to local_timestamp,
         "sync_status" to "SYNCED"

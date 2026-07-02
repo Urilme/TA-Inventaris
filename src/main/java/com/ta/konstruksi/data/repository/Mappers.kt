@@ -7,6 +7,7 @@ import com.ta.konstruksi.domain.model.LogMutasi
 import com.ta.konstruksi.domain.model.MasterKatalog
 import com.ta.konstruksi.domain.model.TransferProyek
 import com.ta.konstruksi.util.JenisMutasi
+import com.ta.konstruksi.util.KondisiBarang
 import com.ta.konstruksi.util.StatusTransfer
 import com.ta.konstruksi.util.SyncStatus
 
@@ -19,6 +20,9 @@ internal fun parseJenisMutasi(value: String): JenisMutasi =
 
 internal fun parseStatusTransfer(value: String): StatusTransfer =
     runCatching { StatusTransfer.valueOf(value) }.getOrDefault(StatusTransfer.IN_TRANSIT)
+
+internal fun parseKondisiBarang(value: String): KondisiBarang =
+    runCatching { KondisiBarang.valueOf(value) }.getOrDefault(KondisiBarang.BAIK)
 
 // --- MasterKatalog ---
 internal fun MasterKatalogEntity.toDomain() = MasterKatalog(
@@ -45,8 +49,13 @@ internal fun MasterKatalog.toEntity() = MasterKatalogEntity(
 internal fun LogMutasiEntity.toDomain() = LogMutasi(
     id_transaksi = id_transaksi,
     sku_id = sku_id,
+    id_mandor = id_mandor,
+    id_proyek = id_proyek,
     jenis_mutasi = parseJenisMutasi(jenis_mutasi),
     jumlah = jumlah,
+    kondisi_barang = parseKondisiBarang(kondisi_barang),
+    lokasi_penggunaan = lokasi_penggunaan,
+    penanggungjawab = penanggungjawab,
     catatan = catatan,
     local_timestamp = local_timestamp,
     sync_status = parseSyncStatus(sync_status)
@@ -55,8 +64,13 @@ internal fun LogMutasiEntity.toDomain() = LogMutasi(
 internal fun LogMutasi.toEntity() = LogMutasiEntity(
     id_transaksi = id_transaksi,
     sku_id = sku_id,
+    id_mandor = id_mandor,
+    id_proyek = id_proyek,
     jenis_mutasi = jenis_mutasi.name,
     jumlah = jumlah,
+    kondisi_barang = kondisi_barang.name,
+    lokasi_penggunaan = lokasi_penggunaan,
+    penanggungjawab = penanggungjawab,
     catatan = catatan,
     local_timestamp = local_timestamp,
     sync_status = sync_status.name

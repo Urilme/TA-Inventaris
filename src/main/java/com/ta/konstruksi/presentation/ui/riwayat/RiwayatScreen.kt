@@ -63,6 +63,7 @@ import com.ta.konstruksi.presentation.ui.theme.TextSubtle
 import com.ta.konstruksi.presentation.viewmodel.RiwayatItem
 import com.ta.konstruksi.presentation.viewmodel.RiwayatViewModel
 import com.ta.konstruksi.util.JenisMutasi
+import com.ta.konstruksi.util.KondisiBarang
 import com.ta.konstruksi.util.SyncStatus
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -246,6 +247,17 @@ private fun RiwayatCard(item: RiwayatItem) {
                         }
                     }
                 }
+                // Detail atribut baru: kondisi barang, lokasi penggunaan, penanggung jawab
+                Spacer(Modifier.height(10.dp))
+                KondisiBadge(m.kondisi_barang)
+                if (m.lokasi_penggunaan.isNotBlank()) {
+                    Spacer(Modifier.height(6.dp))
+                    Text("Lokasi: ${m.lokasi_penggunaan}", fontSize = 12.sp, color = TextSubtle)
+                }
+                if (m.penanggungjawab.isNotBlank()) {
+                    Spacer(Modifier.height(2.dp))
+                    Text("PJ: ${m.penanggungjawab}", fontSize = 12.sp, color = TextSubtle)
+                }
                 Spacer(Modifier.height(10.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     SyncStatusBadge(status = m.sync_status)
@@ -274,6 +286,26 @@ private fun RiwayatCard(item: RiwayatItem) {
         }
     }
 }
+
+@Composable
+private fun KondisiBadge(kondisi: KondisiBarang) {
+    val (label, bg, border, fg) = when (kondisi) {
+        KondisiBarang.BAIK -> Quad("Baik", GreenBg, GreenBorder, GreenMain)
+        KondisiBarang.RUSAK_RINGAN -> Quad("Rusak Ringan", AmberBg, AmberBorder, AmberMain)
+        KondisiBarang.RUSAK_BERAT -> Quad("Rusak Berat", RedBg, RedMain, RedMain)
+    }
+    Row(
+        modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(bg)
+            .border(1.dp, border, RoundedCornerShape(999.dp)).padding(horizontal = 10.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Spacer(Modifier.size(7.dp).clip(CircleShape).background(fg))
+        Spacer(Modifier.width(6.dp))
+        Text("Kondisi: $label", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = fg)
+    }
+}
+
+private data class Quad(val label: String, val bg: Color, val border: Color, val fg: Color)
 
 @Composable
 private fun FilterChip(label: String, selected: Boolean, onClick: () -> Unit) {

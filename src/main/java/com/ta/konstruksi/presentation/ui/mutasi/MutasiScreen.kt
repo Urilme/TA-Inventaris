@@ -71,6 +71,7 @@ import com.ta.konstruksi.presentation.viewmodel.KatalogViewModel
 import com.ta.konstruksi.presentation.viewmodel.MutasiUiState
 import com.ta.konstruksi.presentation.viewmodel.MutasiViewModel
 import com.ta.konstruksi.util.JenisMutasi
+import com.ta.konstruksi.util.KondisiBarang
 import kotlinx.coroutines.delay
 
 @Composable
@@ -82,14 +83,26 @@ fun MutasiScreen(
 ) {
     val uiState by mutasiViewModel.uiState.collectAsStateWithLifecycle()
     val katalogList by katalogViewModel.katalogList.collectAsStateWithLifecycle()
+    val session by mutasiViewModel.session.collectAsStateWithLifecycle()
 
     var jenis by remember { mutableStateOf(JenisMutasi.CHECK_IN) }
     val kategoriList = remember(katalogList) { katalogList.map { it.kategori }.distinct().sorted() }
     var selectedKategori by remember { mutableStateOf("") }
     var selectedItem by remember { mutableStateOf<MasterKatalog?>(null) }
     var jumlah by remember { mutableIntStateOf(1) }
+    var kondisi by remember { mutableStateOf(KondisiBarang.BAIK) }
+    var lokasiPenggunaan by remember { mutableStateOf("") }
+    var penanggungjawab by remember { mutableStateOf("") }
+    var penanggungjawabTouched by remember { mutableStateOf(false) }
     var catatan by remember { mutableStateOf("") }
     var showSnackbar by remember { mutableStateOf(false) }
+
+    // Pre-fill penanggung jawab dengan nama mandor dari sesi (bila belum diubah user)
+    LaunchedEffect(session) {
+        if (!penanggungjawabTouched && penanggungjawab.isBlank()) {
+            session?.nama?.let { penanggungjawab = it }
+        }
+    }
 
     val filteredItems = katalogList.filter { selectedKategori.isEmpty() || it.kategori == selectedKategori }
 
@@ -257,6 +270,63 @@ fun MutasiScreen(
 
                 Spacer(Modifier.height(22.dp))
 
+                // Kondisi Barang
+                FormLabel("Kondisi Barang")
+                Spacer(Modifier.height(8.dp))
+                var kondisiExpanded by remember { mutableStateOf(false) }
+                Box {
+                    DropdownField(
+                        value = kondisi.label(),
+                        isPlaceholder = false,
+                        isSelected = true,
+                        onClick = { kondisiExpanded = true }
+                    )
+                    DropdownMenu(expanded = kondisiExpanded, onDismissRequest = { kondisiExpanded = false }) {
+                        KondisiBarang.entries.forEach { k ->
+                            DropdownMenuItem(text = { Text(k.label()) }, onClick = {
+                                kondisi = k; kondisiExpanded = false
+                            })
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(18.dp))
+
+                // Lokasi Penggunaan (wajib)
+                FormLabel("Lokasi Penggunaan")
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = lokasiPenggunaan, onValueChange = { lokasiPenggunaan = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Navy, unfocusedBorderColor = BorderInput,
+                        focusedContainerColor = Color.White, unfocusedContainerColor = Color.White
+                    ),
+                    placeholder = { Text("mis. Lantai 3 - Area Cor", color = TextSubtle) }
+                )
+
+                Spacer(Modifier.height(18.dp))
+
+                // Penanggung Jawab (wajib, pre-fill dari sesi)
+                FormLabel("Penanggung Jawab")
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = penanggungjawab,
+                    onValueChange = { penanggungjawab = it; penanggungjawabTouched = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Navy, unfocusedBorderColor = BorderInput,
+                        focusedContainerColor = Color.White, unfocusedContainerColor = Color.White
+                    ),
+                    placeholder = { Text("Nama mandor pemegang aset", color = TextSubtle) }
+                )
+
+                Spacer(Modifier.height(22.dp))
+
                 // Catatan
                 FormLabel("Catatan", subtitle = "(opsional)")
                 Spacer(Modifier.height(8.dp))
@@ -292,13 +362,22 @@ fun MutasiScreen(
                 val isOverStock = jenis == JenisMutasi.CHECK_OUT &&
                     (selectedItem?.let { jumlah > it.stok_lokal } ?: false)
                 val canSave = selectedItem != null && jumlah > 0 && !isOverStock &&
+                    lokasiPenggunaan.isNotBlank() && penanggungjawab.isNotBlank() &&
                     uiState !is MutasiUiState.Loading
                 Box(
                     modifier = Modifier.fillMaxWidth().height(62.dp).clip(RoundedCornerShape(14.dp))
                         .background(if (canSave) Navy else Color(0xFFB0BEC5))
                         .clickable(enabled = canSave) {
                             selectedItem?.let { item ->
-                                mutasiViewModel.recordMutasi(item.sku_id, jenis, jumlah, catatan.ifBlank { null })
+                                mutasiViewModel.recordMutasi(
+                                    skuId = item.sku_id,
+                                    jenis = jenis,
+                                    jumlah = jumlah,
+                                    kondisi = kondisi,
+                                    lokasiPenggunaan = lokasiPenggunaan,
+                                    penanggungjawab = penanggungjawab,
+                                    catatan = catatan.ifBlank { null }
+                                )
                             }
                         },
                     contentAlignment = Alignment.Center
@@ -332,6 +411,12 @@ fun MutasiScreen(
             }
         }
     }
+}
+
+private fun KondisiBarang.label(): String = when (this) {
+    KondisiBarang.BAIK -> "Baik"
+    KondisiBarang.RUSAK_RINGAN -> "Rusak Ringan"
+    KondisiBarang.RUSAK_BERAT -> "Rusak Berat"
 }
 
 @Composable

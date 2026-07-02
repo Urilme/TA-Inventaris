@@ -59,10 +59,11 @@ Setiap fitur bisa berdiri sendiri kecuali F3 butuh F2, dan F6 butuh semua fitur 
   - FAB "+" → navigasi ke `TambahKatalogScreen`
   - Swipe-to-delete atau long press untuk hapus
 - [ ] Implementasi `TambahKatalogScreen.kt`:
-  - Form: kategori, nama barang, satuan, stok awal
+  - Form: kategori, nama barang, satuan, stok awal, **stok_minimum** (threshold peringatan)
   - Tombol simpan → `KatalogViewModel.tambahKatalog()` → SKU di-generate otomatis via `UuidGenerator.generateSkuId()`
 - [ ] Implementasi `DashboardScreen.kt`:
   - Kartu ringkasan: total SKU, total stok, jumlah PENDING sync
+  - Peringatan stok minimum: tampilkan barang yang `stok_lokal <= stok_minimum`
   - List 5 barang terakhir diupdate
   - Tombol "Sync Sekarang" → trigger `SyncViewModel`
   - Indikator status sync terakhir + waktu
@@ -71,6 +72,7 @@ Setiap fitur bisa berdiri sendiri kecuali F3 butuh F2, dan F6 butuh semua fitur 
 - Tambah barang baru → muncul di daftar dengan SKU-XXXXXX ✓
 - Stok terbaru tampil di dashboard tanpa koneksi internet ✓
 - Badge "PENDING" muncul pada barang baru yang belum disync ✓
+- Peringatan muncul saat `stok_lokal <= stok_minimum` ✓
 
 ---
 
@@ -79,8 +81,19 @@ Setiap fitur bisa berdiri sendiri kecuali F3 butuh F2, dan F6 butuh semua fitur 
 **Bergantung pada:** F2 (katalog harus ada)
 
 ### Checklist Implementasi
+- [ ] Tambahkan enum `KondisiBarang` di `util/SyncStatus.kt`:
+  ```kotlin
+  enum class KondisiBarang { BAIK, RUSAK_RINGAN, RUSAK_BERAT }
+  ```
+- [ ] Update `LogMutasiEntity` dan domain model `LogMutasi` dengan atribut baru:
+  - `id_mandor: String` — auto-fill dari sesi login aktif
+  - `id_proyek: String` — proyek tempat mutasi terjadi
+  - `kondisi_barang: KondisiBarang` — kondisi fisik aset saat transaksi
+  - `lokasi_penggunaan: String` — area spesifik dalam proyek
+  - `penanggungjawab: String` — nama mandor pemegang aset
+- [ ] Buat Room DB Migration `version 1 → 2` untuk menambahkan kolom baru (JANGAN fallbackToDestructiveMigration)
 - [ ] Implementasi `MutasiRepositoryImpl`:
-  - `recordMutasi()`: insert `LogMutasiEntity` ke Room
+  - `recordMutasi()`: insert `LogMutasiEntity` ke Room dengan semua atribut baru
   - `getAllMutasi()`: return `Flow` dari DAO
   - `getPendingMutasi()`: query `sync_status = 'PENDING'`
   - `markSynced()`: update `sync_status = 'SYNCED'`
@@ -88,7 +101,11 @@ Setiap fitur bisa berdiri sendiri kecuali F3 butuh F2, dan F6 butuh semua fitur 
   - Dropdown pilih barang (dari katalog Room)
   - Toggle Check-In / Check-Out
   - Input jumlah (validasi numerik > 0)
+  - Dropdown `kondisi_barang`: Baik / Rusak Ringan / Rusak Berat
+  - Input `lokasi_penggunaan` (TextField)
+  - Input `penanggungjawab` (TextField — bisa pre-fill nama dari sesi)
   - Input catatan (opsional)
+  - `id_mandor` dan `id_proyek` diambil otomatis dari `UserSession` aktif — tidak ditampilkan ke user
   - Tombol simpan → `MutasiViewModel.recordMutasi()`
   - Validasi client-side: CHECK_OUT tidak boleh melebihi stok saat ini
 - [ ] `RecordMutasiUseCase` sudah siap — pastikan `@Transaction` digunakan di DAO jika update stok + insert mutasi harus atomic
@@ -98,17 +115,20 @@ Setiap fitur bisa berdiri sendiri kecuali F3 butuh F2, dan F6 butuh semua fitur 
 CHECK_OUT:
   1. Baca stok_lokal dari Room
   2. Validasi: stok_lokal >= jumlah
-  3. Insert LogMutasi (sync_status = PENDING)
+  3. Insert LogMutasi dengan semua atribut (sync_status = PENDING)
+     → kondisi_barang, lokasi_penggunaan, penanggungjawab WAJIB diisi
+     → id_mandor auto-fill dari UserSession.id_mandor
   4. Update stok_lokal -= jumlah (optimistic)
   → Jika sync gagal, stok lokal sudah berkurang — ini by design (offline-first)
 
 CHECK_IN:
-  1. Insert LogMutasi (sync_status = PENDING)
+  1. Insert LogMutasi dengan semua atribut (sync_status = PENDING)
   2. Update stok_lokal += jumlah
 ```
 
 ### Kriteria Selesai
 - CHECK_OUT dengan jumlah > stok → error "Stok tidak mencukupi" ✓
+- Form tidak bisa disimpan jika `kondisi_barang`, `lokasi_penggunaan`, atau `penanggungjawab` kosong ✓
 - CHECK_IN berhasil → stok bertambah, transaksi tersimpan dengan PENDING ✓
 - Tanpa internet → semua operasi tetap berjalan ✓
 

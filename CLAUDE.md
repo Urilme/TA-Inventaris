@@ -94,6 +94,7 @@ data class MasterKatalog(
     val nama_barang: String,
     val satuan: String,
     val stok_lokal: Int,
+    val stok_minimum: Int = 0,                // threshold peringatan stok minimum di Dashboard
     val sync_status: SyncStatus = SyncStatus.PENDING,
     val local_timestamp: Long = System.currentTimeMillis()
 )
@@ -105,8 +106,13 @@ data class MasterKatalog(
 data class LogMutasi(
     @PrimaryKey val id_transaksi: String,     // UUID
     val sku_id: String,                       // FK ke MasterKatalog
+    val id_mandor: String,                    // FK ke UserSession — siapa yang mencatat
+    val id_proyek: String,                    // lokasi/proyek tempat mutasi terjadi
     val jenis_mutasi: JenisMutasi,            // CHECK_IN | CHECK_OUT
     val jumlah: Int,
+    val kondisi_barang: KondisiBarang,        // BAIK | RUSAK_RINGAN | RUSAK_BERAT
+    val lokasi_penggunaan: String,            // area spesifik dalam proyek
+    val penanggungjawab: String,              // nama mandor pemegang aset
     val catatan: String? = null,
     val local_timestamp: Long = System.currentTimeMillis(),
     val sync_status: SyncStatus = SyncStatus.PENDING
@@ -133,6 +139,7 @@ data class TransferProyek(
 enum class SyncStatus { PENDING, IN_TRANSIT, SYNCED }
 enum class JenisMutasi { CHECK_IN, CHECK_OUT }
 enum class StatusTransfer { IN_TRANSIT, SELESAI, DIBATALKAN }
+enum class KondisiBarang { BAIK, RUSAK_RINGAN, RUSAK_BERAT }
 ```
 
 ---
@@ -157,6 +164,8 @@ Urutan berdasarkan **Plan by Feature (FDD)** — implementasi dari pondasi ke at
 ### F3 — Pencatatan Mutasi Inventaris ⭐ PRIORITAS 2
 - Form check-in / check-out aset
 - Validasi stok tidak minus (cek Room sebelum insert)
+- Wajib isi: `kondisi_barang` (dropdown enum), `lokasi_penggunaan`, `penanggungjawab`
+- `id_mandor` dan `id_proyek` di-auto-fill dari sesi login yang aktif
 - Simpan ke `LogMutasi` dengan `sync_status = PENDING`
 - Update `stok_lokal` di `MasterKatalog` secara optimistic
 - **File utama**: `MutasiViewModel`, `MutasiRepository`, `MutasiScreen`
