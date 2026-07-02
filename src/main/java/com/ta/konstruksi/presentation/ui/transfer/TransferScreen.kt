@@ -52,7 +52,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavController
 import com.ta.konstruksi.domain.model.MasterKatalog
+import com.ta.konstruksi.presentation.navigation.Screen
+import com.ta.konstruksi.presentation.ui.component.AppBottomBar
 import com.ta.konstruksi.presentation.ui.component.NetworkBadge
 import com.ta.konstruksi.presentation.ui.theme.AmberBg
 import com.ta.konstruksi.presentation.ui.theme.AmberBorder
@@ -76,6 +79,7 @@ private val proyekList = listOf(
 @Composable
 fun TransferScreen(
     onBack: () -> Unit,
+    navController: NavController,
     proyekAsal: String = "Proyek Aktif",
     isOnline: Boolean = false,
     viewModel: TransferViewModel = hiltViewModel()
@@ -117,7 +121,7 @@ fun TransferScreen(
                 NetworkBadge(isOnline = isOnline)
             }
 
-            Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(18.dp)) {
+            Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(start = 18.dp, end = 18.dp, top = 18.dp, bottom = 118.dp)) {
                 // Kategori
                 FormLabel("Kategori")
                 Spacer(Modifier.height(8.dp))
@@ -280,7 +284,14 @@ fun TransferScreen(
             }
         }
 
-        SnackbarHost(hostState = snackbarHostState, modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp))
+        SnackbarHost(hostState = snackbarHostState, modifier = Modifier.align(Alignment.BottomCenter).padding(start = 16.dp, end = 16.dp, bottom = 88.dp))
+
+        // Navbar bawah bersama
+        AppBottomBar(
+            navController = navController,
+            currentRoute = Screen.Transfer.route,
+            modifier = Modifier.align(Alignment.BottomCenter)
+        )
     }
 }
 

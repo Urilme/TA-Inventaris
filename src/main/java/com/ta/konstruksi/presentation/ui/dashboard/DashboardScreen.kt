@@ -47,6 +47,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.ta.konstruksi.domain.model.MasterKatalog
 import com.ta.konstruksi.presentation.navigation.Screen
+import com.ta.konstruksi.presentation.ui.component.AppBottomBar
 import com.ta.konstruksi.presentation.ui.component.NetworkBadge
 import com.ta.konstruksi.presentation.ui.theme.AmberBg
 import com.ta.konstruksi.presentation.ui.theme.AmberBorder
@@ -227,35 +228,12 @@ fun DashboardScreen(
             }
         }
 
-        // FAB
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(end = 18.dp, bottom = 80.dp)
-                .size(64.dp)
-                .shadow(12.dp, RoundedCornerShape(20.dp))
-                .clip(RoundedCornerShape(20.dp))
-                .background(Navy)
-                .clickable { navController.navigate(Screen.Mutasi.route) },
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(Icons.Default.Add, contentDescription = "Catat Mutasi", tint = Color.White, modifier = Modifier.size(32.dp))
-        }
-
-        // Bottom Nav
-        Row(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .height(64.dp)
-                .background(Color.White)
-                .border(1.5.dp, BorderLight, RoundedCornerShape(0.dp)),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            BottomNavItem(icon = Icons.Default.Home, label = "Beranda", selected = true, onClick = {}, modifier = Modifier.weight(1f))
-            BottomNavItem(icon = Icons.Default.History, label = "Riwayat", selected = false,
-                onClick = { navController.navigate(Screen.Riwayat.route) }, modifier = Modifier.weight(1f))
-        }
+        // Navbar bawah bersama (semua fungsi utama)
+        AppBottomBar(
+            navController = navController,
+            currentRoute = Screen.Dashboard.route,
+            modifier = Modifier.align(Alignment.BottomCenter)
+        )
     }
 }
 
@@ -406,23 +384,3 @@ private fun LowStockCard(item: MasterKatalog, isCritical: Boolean) {
     }
 }
 
-@Composable
-private fun BottomNavItem(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .clickable(onClick = onClick),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Icon(icon, contentDescription = label, tint = if (selected) Navy else TextSubtle, modifier = Modifier.size(24.dp))
-        Spacer(Modifier.height(3.dp))
-        Text(label, fontSize = 11.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal, color = if (selected) Navy else TextSubtle)
-    }
-}

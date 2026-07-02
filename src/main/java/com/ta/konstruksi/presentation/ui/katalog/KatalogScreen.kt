@@ -45,6 +45,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.ta.konstruksi.domain.model.MasterKatalog
 import com.ta.konstruksi.presentation.navigation.Screen
+import com.ta.konstruksi.presentation.ui.component.AppBottomBar
 import com.ta.konstruksi.presentation.ui.component.SyncStatusBadge
 import com.ta.konstruksi.presentation.ui.theme.AppBackground
 import com.ta.konstruksi.presentation.ui.theme.BorderLight
@@ -125,20 +126,27 @@ fun KatalogScreen(
                     items(filtered) { item ->
                         KatalogItemCard(item = item)
                     }
-                    item { Spacer(Modifier.height(80.dp)) }
+                    item { Spacer(Modifier.height(118.dp)) }
                 }
             }
         }
 
-        // FAB
+        // FAB tambah barang — diangkat di atas navbar
         Box(
-            modifier = Modifier.align(Alignment.BottomEnd).padding(18.dp).size(64.dp)
+            modifier = Modifier.align(Alignment.BottomEnd).padding(end = 18.dp, bottom = 88.dp).size(64.dp)
                 .shadow(8.dp, RoundedCornerShape(20.dp)).clip(RoundedCornerShape(20.dp))
                 .background(Navy).clickable { navController.navigate(Screen.TambahKatalog.route) },
             contentAlignment = Alignment.Center
         ) {
             Icon(Icons.Default.Add, null, tint = Color.White, modifier = Modifier.size(32.dp))
         }
+
+        // Navbar bawah bersama
+        AppBottomBar(
+            navController = navController,
+            currentRoute = Screen.Katalog.route,
+            modifier = Modifier.align(Alignment.BottomCenter)
+        )
     }
 }
 

@@ -83,6 +83,7 @@ fun AppNavigation() {
         composable(Screen.Transfer.route) {
             TransferScreen(
                 onBack = { navController.popBackStack() },
+                navController = navController,
                 isOnline = isOnline
             )
         }

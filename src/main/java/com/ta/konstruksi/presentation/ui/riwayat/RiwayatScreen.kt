@@ -47,6 +47,7 @@ import androidx.navigation.NavController
 import com.ta.konstruksi.domain.model.LogMutasi
 import com.ta.konstruksi.domain.model.TransferProyek
 import com.ta.konstruksi.presentation.navigation.Screen
+import com.ta.konstruksi.presentation.ui.component.AppBottomBar
 import com.ta.konstruksi.presentation.ui.component.SyncStatusBadge
 import com.ta.konstruksi.presentation.ui.theme.AmberBg
 import com.ta.konstruksi.presentation.ui.theme.AmberBorder
@@ -172,32 +173,17 @@ fun RiwayatScreen(
                     items(filtered) { item ->
                         RiwayatCard(item = item)
                     }
-                    item { Spacer(Modifier.height(6.dp)) }
-                }
-            }
-
-            // Bottom nav
-            Row(
-                modifier = Modifier.fillMaxWidth().height(64.dp).background(Color.White)
-                    .border(1.5.dp, BorderLight, RoundedCornerShape(0.dp)),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                Column(
-                    modifier = Modifier.weight(1f).fillMaxSize().clickable { navController.navigate(Screen.Dashboard.route) { popUpTo(Screen.Dashboard.route) } },
-                    horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center
-                ) {
-                    Icon(Icons.Default.Home, null, tint = TextSubtle, modifier = Modifier.size(24.dp))
-                    Text("Beranda", fontSize = 11.sp, color = TextSubtle)
-                }
-                Column(
-                    modifier = Modifier.weight(1f).fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center
-                ) {
-                    Icon(Icons.Default.History, null, tint = Navy, modifier = Modifier.size(24.dp))
-                    Text("Riwayat", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Navy)
+                    item { Spacer(Modifier.height(118.dp)) }
                 }
             }
         }
+
+        // Navbar bawah bersama
+        AppBottomBar(
+            navController = navController,
+            currentRoute = Screen.Riwayat.route,
+            modifier = Modifier.align(Alignment.BottomCenter)
+        )
     }
 }
 
