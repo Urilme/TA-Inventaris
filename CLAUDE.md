@@ -90,7 +90,7 @@ data class UserSession(
 @Entity(tableName = "master_katalog")
 data class MasterKatalog(
     @PrimaryKey val sku_id: String,           // UUID-based SKU
-    val kategori: String,
+    val kategori: String,                     // ENUM STRING: "alat" | "bahan" | "scaffolding"
     val nama_barang: String,
     val satuan: String,
     val stok_lokal: Int,
@@ -99,6 +99,16 @@ data class MasterKatalog(
     val local_timestamp: Long = System.currentTimeMillis()
 )
 ```
+
+> **Aturan Kategori:** Kategori barang hanya tiga nilai tetap: `"alat"`, `"bahan"`, `"scaffolding"`.
+> Gunakan konstanta di `Constants.kt` agar tidak ada typo:
+> ```kotlin
+> object KategoriBarang {
+>     const val ALAT = "alat"
+>     const val BAHAN = "bahan"
+>     const val SCAFFOLDING = "scaffolding"
+> }
+> ```
 
 ### `LogMutasi`
 ```kotlin
@@ -110,7 +120,9 @@ data class LogMutasi(
     val id_proyek: String,                    // lokasi/proyek tempat mutasi terjadi
     val jenis_mutasi: JenisMutasi,            // CHECK_IN | CHECK_OUT
     val jumlah: Int,
-    val kondisi_barang: KondisiBarang,        // BAIK | RUSAK_RINGAN | RUSAK_BERAT
+    val kondisi_barang: KondisiBarang? = null, // BAIK | RUSAK_RINGAN | RUSAK_BERAT
+                                               // NULLABLE — hanya diisi jika kategori = "alat"
+                                               // bahan dan scaffolding → null
     val lokasi_penggunaan: String,            // area spesifik dalam proyek
     val penanggungjawab: String,              // nama mandor pemegang aset
     val catatan: String? = null,
@@ -118,6 +130,12 @@ data class LogMutasi(
     val sync_status: SyncStatus = SyncStatus.PENDING
 )
 ```
+
+> **Aturan Kondisi Barang:**
+> - `kategori = "alat"` → `kondisi_barang` **WAJIB** diisi (tidak boleh null)
+> - `kategori = "bahan"` → `kondisi_barang` = `null` (tidak relevan untuk material habis pakai)
+> - `kategori = "scaffolding"` → `kondisi_barang` = `null`
+> - Validasi ini dilakukan di `RecordMutasiUseCase` sebelum INSERT ke Room
 
 ### `TransferProyek`
 ```kotlin

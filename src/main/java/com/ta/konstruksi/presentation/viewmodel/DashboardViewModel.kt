@@ -12,10 +12,13 @@ import com.ta.konstruksi.sync.SyncScheduler
 import com.ta.konstruksi.util.JenisMutasi
 import com.ta.konstruksi.util.SyncStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -47,6 +50,12 @@ class DashboardViewModel @Inject constructor(
     fun requestSync() = syncScheduler.requestSync()
 
     private val sessionFlow = flow { emit(authRepository.getLocalSession()) }
+
+    // Menandai emisi pertama agar Dashboard bisa menampilkan indikator memuat awal
+    private val _initialLoaded = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _initialLoaded
+        .map { !it }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
     val uiState: StateFlow<DashboardUiState> = combine(
         sessionFlow,
@@ -81,7 +90,8 @@ class DashboardViewModel @Inject constructor(
         }.timeInMillis
         val todayCount = mutasiList.count { it.local_timestamp >= todayStart }
         DashboardUiState(session, lowStock, pendingItems.size, pendingItems, todayCount)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), DashboardUiState())
+    }.onEach { _initialLoaded.value = true }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), DashboardUiState())
 
     fun logout() {
         viewModelScope.launch {

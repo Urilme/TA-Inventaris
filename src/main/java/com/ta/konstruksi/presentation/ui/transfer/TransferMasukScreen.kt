@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -70,7 +71,7 @@ fun TransferMasukScreen(
         Column(modifier = Modifier.fillMaxSize()) {
             // Header
             Row(
-                modifier = Modifier.fillMaxWidth().background(Navy)
+                modifier = Modifier.fillMaxWidth().background(Navy).statusBarsPadding()
                     .padding(start = 4.dp, end = 16.dp, top = 12.dp, bottom = 14.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {

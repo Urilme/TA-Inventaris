@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -48,6 +49,7 @@ import androidx.navigation.NavController
 import com.ta.konstruksi.domain.model.MasterKatalog
 import com.ta.konstruksi.presentation.navigation.Screen
 import com.ta.konstruksi.presentation.ui.component.AppBottomBar
+import com.ta.konstruksi.presentation.ui.component.AppLoading
 import com.ta.konstruksi.presentation.ui.component.NetworkBadge
 import com.ta.konstruksi.presentation.ui.theme.AmberBg
 import com.ta.konstruksi.presentation.ui.theme.AmberBorder
@@ -74,6 +76,7 @@ fun DashboardScreen(
     viewModel: DashboardViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
 
     // Saat online dan masih ada backlog, dorong sinkronisasi otomatis (tanpa tombol manual)
     LaunchedEffect(isOnline, state.pendingCount) {
@@ -87,6 +90,7 @@ fun DashboardScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(Navy)
+                    .statusBarsPadding()
                     .padding(start = 18.dp, end = 18.dp, top = 14.dp, bottom = 16.dp)
             ) {
                 Row(
@@ -133,11 +137,14 @@ fun DashboardScreen(
             }
 
             // Content
+            if (isLoading) {
+                AppLoading(modifier = Modifier.weight(1f).fillMaxWidth())
+            } else
             Column(
                 modifier = Modifier
                     .weight(1f)
                     .verticalScroll(rememberScrollState())
-                    .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 100.dp)
+                    .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 118.dp)
             ) {
                 // Stats row
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {

@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -27,8 +28,6 @@ import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
@@ -56,6 +55,8 @@ import androidx.navigation.NavController
 import com.ta.konstruksi.domain.model.MasterKatalog
 import com.ta.konstruksi.presentation.navigation.Screen
 import com.ta.konstruksi.presentation.ui.component.AppBottomBar
+import com.ta.konstruksi.presentation.ui.component.AppDropdownItem
+import com.ta.konstruksi.presentation.ui.component.AppDropdownMenu
 import com.ta.konstruksi.presentation.ui.component.NetworkBadge
 import com.ta.konstruksi.presentation.ui.theme.AmberBg
 import com.ta.konstruksi.presentation.ui.theme.AmberBorder
@@ -110,7 +111,7 @@ fun TransferScreen(
         Column(modifier = Modifier.fillMaxSize()) {
             // Header
             Row(
-                modifier = Modifier.fillMaxWidth().background(Navy)
+                modifier = Modifier.fillMaxWidth().background(Navy).statusBarsPadding()
                     .padding(start = 4.dp, end = 16.dp, top = 12.dp, bottom = 14.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -128,11 +129,14 @@ fun TransferScreen(
                 var kategoriExpanded by remember { mutableStateOf(false) }
                 Box {
                     DropdownField(value = selectedKategori.ifEmpty { "Pilih Kategori" }, isPlaceholder = selectedKategori.isEmpty(), onClick = { kategoriExpanded = true })
-                    DropdownMenu(expanded = kategoriExpanded, onDismissRequest = { kategoriExpanded = false }) {
+                    AppDropdownMenu(expanded = kategoriExpanded, onDismissRequest = { kategoriExpanded = false }) {
                         kategoriList.forEach { kat ->
-                            DropdownMenuItem(text = { Text(kat) }, onClick = {
+                            AppDropdownItem(text = kat, selected = kat == selectedKategori, onClick = {
                                 selectedKategori = kat; selectedItem = null; kategoriExpanded = false
                             })
+                        }
+                        if (kategoriList.isEmpty()) {
+                            AppDropdownItem(text = "Belum ada kategori", enabled = false, onClick = {})
                         }
                     }
                 }
@@ -150,12 +154,16 @@ fun TransferScreen(
                         isSelected = selectedItem != null,
                         onClick = { barangExpanded = true }
                     )
-                    DropdownMenu(expanded = barangExpanded, onDismissRequest = { barangExpanded = false }) {
+                    AppDropdownMenu(expanded = barangExpanded, onDismissRequest = { barangExpanded = false }) {
                         filteredItems.forEach { item ->
-                            DropdownMenuItem(
-                                text = { Text("${item.nama_barang} (${item.stok_lokal} ${item.satuan})") },
+                            AppDropdownItem(
+                                text = "${item.nama_barang} (${item.stok_lokal} ${item.satuan})",
+                                selected = selectedItem?.sku_id == item.sku_id,
                                 onClick = { selectedItem = item; jumlah = 1; barangExpanded = false }
                             )
+                        }
+                        if (filteredItems.isEmpty()) {
+                            AppDropdownItem(text = "Belum ada barang", enabled = false, onClick = {})
                         }
                     }
                 }
@@ -200,9 +208,9 @@ fun TransferScreen(
                         )
                         Icon(Icons.Default.ExpandMore, null, tint = TextSubtle, modifier = Modifier.size(24.dp))
                     }
-                    DropdownMenu(expanded = proyekExpanded, onDismissRequest = { proyekExpanded = false }) {
+                    AppDropdownMenu(expanded = proyekExpanded, onDismissRequest = { proyekExpanded = false }) {
                         proyekList.filter { it != proyekAsal }.forEach { proyek ->
-                            DropdownMenuItem(text = { Text(proyek) }, onClick = { proyekTujuan = proyek; proyekExpanded = false })
+                            AppDropdownItem(text = proyek, selected = proyek == proyekTujuan, onClick = { proyekTujuan = proyek; proyekExpanded = false })
                         }
                     }
                 }

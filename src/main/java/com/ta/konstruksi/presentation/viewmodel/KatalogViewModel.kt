@@ -10,6 +10,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -27,8 +29,15 @@ class KatalogViewModel @Inject constructor(
     private val syncScheduler: SyncScheduler
 ) : ViewModel() {
 
+    // Menandai emisi pertama dari Room agar bisa membedakan "sedang memuat" vs "kosong"
+    private val _initialLoaded = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _initialLoaded
+        .map { !it }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
     val katalogList: StateFlow<List<MasterKatalog>> = katalogRepository
         .getAllKatalog()
+        .onEach { _initialLoaded.value = true }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private val _uiState = MutableStateFlow<KatalogUiState>(KatalogUiState.Idle)

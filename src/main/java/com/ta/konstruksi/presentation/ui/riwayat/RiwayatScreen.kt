@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -20,8 +21,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Login
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.LocalShipping
@@ -48,6 +53,7 @@ import com.ta.konstruksi.domain.model.LogMutasi
 import com.ta.konstruksi.domain.model.TransferProyek
 import com.ta.konstruksi.presentation.navigation.Screen
 import com.ta.konstruksi.presentation.ui.component.AppBottomBar
+import com.ta.konstruksi.presentation.ui.component.AppLoading
 import com.ta.konstruksi.presentation.ui.component.SyncStatusBadge
 import com.ta.konstruksi.presentation.ui.theme.AmberBg
 import com.ta.konstruksi.presentation.ui.theme.AmberBorder
@@ -79,6 +85,7 @@ fun RiwayatScreen(
 ) {
     val riwayatList by viewModel.riwayatList.collectAsStateWithLifecycle()
     val filterState by viewModel.filterState.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     var searchQuery by remember { mutableStateOf("") }
 
     val filtered = riwayatList.filter {
@@ -92,7 +99,7 @@ fun RiwayatScreen(
     Box(modifier = Modifier.fillMaxSize().background(AppBackground)) {
         Column(modifier = Modifier.fillMaxSize()) {
             // Navy header with search
-            Column(modifier = Modifier.fillMaxWidth().background(Navy).padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 14.dp)) {
+            Column(modifier = Modifier.fillMaxWidth().background(Navy).statusBarsPadding().padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 14.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -156,13 +163,33 @@ fun RiwayatScreen(
                 }
             }
 
-            if (filtered.isEmpty()) {
-                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.Default.History, null, tint = Color(0xFFd0d8de), modifier = Modifier.size(64.dp))
-                        Spacer(Modifier.height(16.dp))
-                        Text("Belum ada riwayat", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFFa7b2bc))
-                        Text("Catat mutasi atau transfer untuk melihat riwayat.", fontSize = 13.sp, color = TextSubtle)
+            if (isLoading) {
+                AppLoading(modifier = Modifier.weight(1f).fillMaxWidth())
+            } else if (filtered.isEmpty()) {
+                // Beri ruang navbar (118dp) agar konten benar-benar terpusat di area terlihat
+                Box(
+                    modifier = Modifier.weight(1f).fillMaxWidth().padding(bottom = 118.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(horizontal = 40.dp)) {
+                        Box(
+                            modifier = Modifier.size(96.dp).clip(CircleShape).background(Color(0xFFeef1f3)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.History, null, tint = Color(0xFFa7b2bc), modifier = Modifier.size(46.dp))
+                        }
+                        Spacer(Modifier.height(18.dp))
+                        Text(
+                            if (filterState == null) "Belum ada riwayat" else "Tidak ada riwayat pada filter ini",
+                            fontSize = 17.sp, fontWeight = FontWeight.Black, color = Navy
+                        )
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            if (filterState == null) "Semua mutasi & transfer yang kamu catat akan muncul di sini."
+                            else "Coba ubah filter untuk melihat riwayat lainnya.",
+                            fontSize = 13.sp, color = TextSubtle,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center, lineHeight = 19.sp
+                        )
                     }
                 }
             } else {
@@ -205,8 +232,8 @@ private fun RiwayatCard(item: RiwayatItem) {
     }
 
     Column(
-        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Color.White)
-            .border(1.5.dp, BorderLight, RoundedCornerShape(14.dp)).padding(13.dp)
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Color.White)
+            .border(1.5.dp, BorderLight, RoundedCornerShape(16.dp)).padding(14.dp)
     ) {
         when (item) {
             is RiwayatItem.Mutasi -> {
@@ -215,61 +242,115 @@ private fun RiwayatCard(item: RiwayatItem) {
                 val iconBg = if (isOut) RedBg else GreenBg
                 val iconTint = if (isOut) RedMain else GreenMain
                 val typeLabel = if (isOut) "Keluar" else "Masuk"
-                val typeColor = if (isOut) RedMain else GreenMain
+                val accent = if (isOut) RedMain else GreenMain
 
+                // Header: ikon · nama + jenis/waktu · jumlah menonjol
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Box(modifier = Modifier.size(40.dp).clip(RoundedCornerShape(10.dp)).background(iconBg), contentAlignment = Alignment.Center) {
+                    Box(modifier = Modifier.size(42.dp).clip(RoundedCornerShape(11.dp)).background(iconBg), contentAlignment = Alignment.Center) {
                         Icon(
-                            if (isOut) Icons.Default.HourglassEmpty else Icons.Default.CheckCircle,
+                            if (isOut) Icons.AutoMirrored.Filled.Logout else Icons.AutoMirrored.Filled.Login,
                             null, tint = iconTint, modifier = Modifier.size(22.dp)
                         )
                     }
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
                         Text(item.label, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Navy)
-                        Row {
-                            Text(typeLabel, fontSize = 12.sp, color = typeColor, fontWeight = FontWeight.Bold)
-                            Text(" · ${m.jumlah} unit · ${timeLabel(m.local_timestamp)}", fontSize = 12.sp, color = TextSubtle)
+                        Spacer(Modifier.height(2.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(typeLabel, fontSize = 12.sp, color = accent, fontWeight = FontWeight.Bold)
+                            Text(" · ${timeLabel(m.local_timestamp)}", fontSize = 12.sp, color = TextSubtle)
                         }
                     }
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            "${if (isOut) "−" else "+"}${m.jumlah}",
+                            fontSize = 20.sp, fontWeight = FontWeight.Black, color = accent, lineHeight = 22.sp
+                        )
+                        Text("unit", fontSize = 11.sp, color = TextSubtle)
+                    }
                 }
-                // Detail atribut baru: kondisi barang, lokasi penggunaan, penanggung jawab
-                Spacer(Modifier.height(10.dp))
-                KondisiBadge(m.kondisi_barang)
+
+                Spacer(Modifier.height(12.dp))
+                CardDivider()
+                Spacer(Modifier.height(12.dp))
+
+                // Kondisi + status sinkron
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    KondisiBadge(m.kondisi_barang)
+                    SyncStatusBadge(status = m.sync_status)
+                }
+
                 if (m.lokasi_penggunaan.isNotBlank()) {
-                    Spacer(Modifier.height(6.dp))
-                    Text("Lokasi: ${m.lokasi_penggunaan}", fontSize = 12.sp, color = TextSubtle)
+                    Spacer(Modifier.height(10.dp))
+                    MetaRow(Icons.Default.Place, "Lokasi", m.lokasi_penggunaan)
                 }
                 if (m.penanggungjawab.isNotBlank()) {
-                    Spacer(Modifier.height(2.dp))
-                    Text("PJ: ${m.penanggungjawab}", fontSize = 12.sp, color = TextSubtle)
-                }
-                Spacer(Modifier.height(10.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    SyncStatusBadge(status = m.sync_status)
+                    Spacer(Modifier.height(6.dp))
+                    MetaRow(Icons.Default.Person, "Penanggung Jawab", m.penanggungjawab)
                 }
             }
             is RiwayatItem.Transfer -> {
                 val t: TransferProyek = item.data
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Box(modifier = Modifier.size(40.dp).clip(RoundedCornerShape(10.dp)).background(Color(0xFFeef1f3)), contentAlignment = Alignment.Center) {
+                    Box(modifier = Modifier.size(42.dp).clip(RoundedCornerShape(11.dp)).background(Color(0xFFeef1f3)), contentAlignment = Alignment.Center) {
                         Icon(Icons.Default.LocalShipping, null, tint = Navy, modifier = Modifier.size(22.dp))
                     }
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
                         Text(item.label, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Navy)
-                        Row {
-                            Text("Transfer", fontSize = 12.sp, color = TextSubtle, fontWeight = FontWeight.Bold)
-                            Text(" · ${t.jumlah} unit · ${timeLabel(t.local_timestamp)}", fontSize = 12.sp, color = TextSubtle)
+                        Spacer(Modifier.height(2.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("Transfer", fontSize = 12.sp, color = Navy, fontWeight = FontWeight.Bold)
+                            Text(" · ${timeLabel(t.local_timestamp)}", fontSize = 12.sp, color = TextSubtle)
                         }
                     }
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text("${t.jumlah}", fontSize = 20.sp, fontWeight = FontWeight.Black, color = Navy, lineHeight = 22.sp)
+                        Text("unit", fontSize = 11.sp, color = TextSubtle)
+                    }
                 }
-                Spacer(Modifier.height(10.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+
+                Spacer(Modifier.height(12.dp))
+                CardDivider()
+                Spacer(Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (t.proyek_tujuan.isNotBlank()) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                            Icon(Icons.Default.Place, null, tint = TextSubtle, modifier = Modifier.size(14.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Ke: ${t.proyek_tujuan}", fontSize = 12.sp, color = TextSubtle, fontWeight = FontWeight.Medium)
+                        }
+                    } else {
+                        Spacer(Modifier.weight(1f))
+                    }
                     SyncStatusBadge(status = t.sync_status)
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun CardDivider() {
+    Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BorderLight))
+}
+
+@Composable
+private fun MetaRow(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, value: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, contentDescription = null, tint = TextSubtle, modifier = Modifier.size(14.dp))
+        Spacer(Modifier.width(6.dp))
+        Text("$label: ", fontSize = 12.sp, color = TextSubtle)
+        Text(value, fontSize = 12.sp, color = Navy, fontWeight = FontWeight.Medium)
     }
 }
 

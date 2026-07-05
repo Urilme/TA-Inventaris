@@ -18,6 +18,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.ta.konstruksi.presentation.ui.auth.LoginScreen
 import com.ta.konstruksi.presentation.ui.dashboard.DashboardScreen
+import com.ta.konstruksi.presentation.ui.katalog.DetailBarangScreen
 import com.ta.konstruksi.presentation.ui.katalog.KatalogScreen
 import com.ta.konstruksi.presentation.ui.katalog.TambahKatalogScreen
 import com.ta.konstruksi.presentation.ui.mutasi.MutasiScreen
@@ -31,6 +32,9 @@ sealed class Screen(val route: String) {
     object Dashboard : Screen("dashboard")
     object Katalog : Screen("katalog")
     object TambahKatalog : Screen("tambah_katalog")
+    object DetailBarang : Screen("detail_barang/{skuId}") {
+        fun createRoute(skuId: String) = "detail_barang/$skuId"
+    }
     object Mutasi : Screen("mutasi")
     object Transfer : Screen("transfer")
     object TransferMasuk : Screen("transfer_masuk")
@@ -68,6 +72,18 @@ fun AppNavigation() {
 
         composable(Screen.TambahKatalog.route) {
             TambahKatalogScreen(
+                onBack = { navController.popBackStack() },
+                isOnline = isOnline
+            )
+        }
+
+        composable(
+            route = Screen.DetailBarang.route,
+            arguments = listOf(navArgument("skuId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val skuId = backStackEntry.arguments?.getString("skuId") ?: ""
+            DetailBarangScreen(
+                skuId = skuId,
                 onBack = { navController.popBackStack() },
                 isOnline = isOnline
             )

@@ -81,14 +81,20 @@ Setiap fitur bisa berdiri sendiri kecuali F3 butuh F2, dan F6 butuh semua fitur 
 **Bergantung pada:** F2 (katalog harus ada)
 
 ### Checklist Implementasi
-- [ ] Tambahkan enum `KondisiBarang` di `util/SyncStatus.kt`:
+- [ ] Tambahkan enum `KondisiBarang` dan konstanta `KategoriBarang` di `util/SyncStatus.kt`:
   ```kotlin
   enum class KondisiBarang { BAIK, RUSAK_RINGAN, RUSAK_BERAT }
+
+  object KategoriBarang {
+      const val ALAT        = "alat"        // kondisi_barang WAJIB
+      const val BAHAN       = "bahan"       // kondisi_barang = null
+      const val SCAFFOLDING = "scaffolding" // kondisi_barang = null
+  }
   ```
 - [ ] Update `LogMutasiEntity` dan domain model `LogMutasi` dengan atribut baru:
   - `id_mandor: String` — auto-fill dari sesi login aktif
   - `id_proyek: String` — proyek tempat mutasi terjadi
-  - `kondisi_barang: KondisiBarang` — kondisi fisik aset saat transaksi
+  - `kondisi_barang: KondisiBarang? = null` — **nullable**, hanya wajib jika `kategori = "alat"`
   - `lokasi_penggunaan: String` — area spesifik dalam proyek
   - `penanggungjawab: String` — nama mandor pemegang aset
 - [ ] Buat Room DB Migration `version 1 → 2` untuk menambahkan kolom baru (JANGAN fallbackToDestructiveMigration)
@@ -98,37 +104,56 @@ Setiap fitur bisa berdiri sendiri kecuali F3 butuh F2, dan F6 butuh semua fitur 
   - `getPendingMutasi()`: query `sync_status = 'PENDING'`
   - `markSynced()`: update `sync_status = 'SYNCED'`
 - [ ] Implementasi `MutasiScreen.kt`:
-  - Dropdown pilih barang (dari katalog Room)
+  - Dropdown pilih barang (dari katalog Room) — saat barang dipilih, baca `kategori`-nya
   - Toggle Check-In / Check-Out
   - Input jumlah (validasi numerik > 0)
-  - Dropdown `kondisi_barang`: Baik / Rusak Ringan / Rusak Berat
-  - Input `lokasi_penggunaan` (TextField)
-  - Input `penanggungjawab` (TextField — bisa pre-fill nama dari sesi)
+  - **Dropdown `kondisi_barang` (Baik / Rusak Ringan / Rusak Berat): tampil HANYA jika `kategori = "alat"`**
+  - Input `lokasi_penggunaan` (TextField) — selalu tampil
+  - Input `penanggungjawab` (TextField — bisa pre-fill nama dari sesi) — selalu tampil
   - Input catatan (opsional)
   - `id_mandor` dan `id_proyek` diambil otomatis dari `UserSession` aktif — tidak ditampilkan ke user
   - Tombol simpan → `MutasiViewModel.recordMutasi()`
   - Validasi client-side: CHECK_OUT tidak boleh melebihi stok saat ini
-- [ ] `RecordMutasiUseCase` sudah siap — pastikan `@Transaction` digunakan di DAO jika update stok + insert mutasi harus atomic
+- [ ] `RecordMutasiUseCase` — tambahkan validasi kategori sebelum INSERT:
+  ```kotlin
+  if (katalog.kategori == KategoriBarang.ALAT && mutasi.kondisi_barang == null) {
+      return Result.failure("Kondisi barang wajib diisi untuk kategori alat")
+  }
+  ```
+- [ ] Pastikan `@Transaction` digunakan di DAO untuk update stok + insert mutasi agar atomic
+
+### Aturan Bisnis Kategori (KRITIS)
+```
+kategori = "alat"        → kondisi_barang WAJIB (dropdown tampil)
+kategori = "bahan"       → kondisi_barang = null (dropdown DISEMBUNYIKAN)
+kategori = "scaffolding" → kondisi_barang = null (dropdown DISEMBUNYIKAN)
+```
+Validasi ini ada di DUA tempat:
+1. **UI layer** (`MutasiScreen`): sembunyikan/tampilkan dropdown secara reaktif berdasarkan item yang dipilih
+2. **Domain layer** (`RecordMutasiUseCase`): validasi ulang sebelum INSERT sebagai safety net
 
 ### Logika Kritis
 ```
 CHECK_OUT:
-  1. Baca stok_lokal dari Room
+  1. Baca stok_lokal dan kategori dari Room (via sku_id)
   2. Validasi: stok_lokal >= jumlah
-  3. Insert LogMutasi dengan semua atribut (sync_status = PENDING)
-     → kondisi_barang, lokasi_penggunaan, penanggungjawab WAJIB diisi
+  3. Validasi: jika kategori = "alat", kondisi_barang != null
+  4. Insert LogMutasi (sync_status = PENDING)
      → id_mandor auto-fill dari UserSession.id_mandor
-  4. Update stok_lokal -= jumlah (optimistic)
-  → Jika sync gagal, stok lokal sudah berkurang — ini by design (offline-first)
+     → kondisi_barang = null jika bahan/scaffolding
+  5. Update stok_lokal -= jumlah (optimistic)
 
 CHECK_IN:
-  1. Insert LogMutasi dengan semua atribut (sync_status = PENDING)
-  2. Update stok_lokal += jumlah
+  1. Validasi: jika kategori = "alat", kondisi_barang != null
+  2. Insert LogMutasi (sync_status = PENDING)
+  3. Update stok_lokal += jumlah
 ```
 
 ### Kriteria Selesai
 - CHECK_OUT dengan jumlah > stok → error "Stok tidak mencukupi" ✓
-- Form tidak bisa disimpan jika `kondisi_barang`, `lokasi_penggunaan`, atau `penanggungjawab` kosong ✓
+- Pilih barang kategori "alat" → dropdown kondisi_barang muncul dan wajib diisi ✓
+- Pilih barang kategori "bahan" atau "scaffolding" → dropdown kondisi_barang tidak muncul ✓
+- Form tidak bisa disimpan jika `lokasi_penggunaan` atau `penanggungjawab` kosong ✓
 - CHECK_IN berhasil → stok bertambah, transaksi tersimpan dengan PENDING ✓
 - Tanpa internet → semua operasi tetap berjalan ✓
 

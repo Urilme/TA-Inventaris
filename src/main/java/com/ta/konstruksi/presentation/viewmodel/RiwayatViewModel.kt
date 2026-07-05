@@ -13,6 +13,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
 
@@ -43,6 +45,12 @@ class RiwayatViewModel @Inject constructor(
 
     val filterState = MutableStateFlow<SyncStatus?>(null)
 
+    // Menandai emisi pertama agar bisa membedakan "sedang memuat" vs "riwayat kosong"
+    private val _initialLoaded = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _initialLoaded
+        .map { !it }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
     val riwayatList: StateFlow<List<RiwayatItem>> = combine(
         mutasiRepository.getAllMutasi(),
         transferRepository.getAllTransfer(),
@@ -56,7 +64,8 @@ class RiwayatViewModel @Inject constructor(
         transferList.forEach { items.add(RiwayatItem.Transfer(it, namaBySku[it.sku_id] ?: it.sku_id)) }
         val sorted = items.sortedByDescending { it.timestamp }
         if (filter != null) sorted.filter { it.syncStatus == filter } else sorted
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    }.onEach { _initialLoaded.value = true }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun setFilter(status: SyncStatus?) {
         filterState.value = status

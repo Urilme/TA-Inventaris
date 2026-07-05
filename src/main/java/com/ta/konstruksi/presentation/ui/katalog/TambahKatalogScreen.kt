@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -23,8 +24,7 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
@@ -47,6 +47,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.ta.konstruksi.presentation.ui.component.AppDropdownItem
+import com.ta.konstruksi.presentation.ui.component.AppDropdownMenu
 import com.ta.konstruksi.presentation.ui.component.NetworkBadge
 import com.ta.konstruksi.presentation.ui.theme.AmberBg
 import com.ta.konstruksi.presentation.ui.theme.AmberBorder
@@ -96,7 +98,7 @@ fun TambahKatalogScreen(
         Column(modifier = Modifier.fillMaxSize()) {
             // Header
             Row(
-                modifier = Modifier.fillMaxWidth().background(Navy)
+                modifier = Modifier.fillMaxWidth().background(Navy).statusBarsPadding()
                     .padding(start = 4.dp, end = 16.dp, top = 12.dp, bottom = 14.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -142,9 +144,9 @@ fun TambahKatalogScreen(
                         )
                         Icon(Icons.Default.ExpandMore, null, tint = TextSubtle, modifier = Modifier.size(24.dp))
                     }
-                    DropdownMenu(expanded = kategoriExpanded, onDismissRequest = { kategoriExpanded = false }) {
+                    AppDropdownMenu(expanded = kategoriExpanded, onDismissRequest = { kategoriExpanded = false }) {
                         kategoriOptions.forEach { opt ->
-                            DropdownMenuItem(text = { Text(opt) }, onClick = { kategori = opt; kategoriExpanded = false })
+                            AppDropdownItem(text = opt, selected = opt == kategori, onClick = { kategori = opt; kategoriExpanded = false })
                         }
                     }
                 }
@@ -186,9 +188,9 @@ fun TambahKatalogScreen(
                         )
                         Icon(Icons.Default.ExpandMore, null, tint = TextSubtle, modifier = Modifier.size(24.dp))
                     }
-                    DropdownMenu(expanded = satuanExpanded, onDismissRequest = { satuanExpanded = false }) {
+                    AppDropdownMenu(expanded = satuanExpanded, onDismissRequest = { satuanExpanded = false }) {
                         satuanOptions.forEach { opt ->
-                            DropdownMenuItem(text = { Text(opt) }, onClick = { satuan = opt; satuanExpanded = false })
+                            AppDropdownItem(text = opt, selected = opt == satuan, onClick = { satuan = opt; satuanExpanded = false })
                         }
                     }
                 }
@@ -220,20 +222,24 @@ fun TambahKatalogScreen(
                 Spacer(Modifier.height(26.dp))
 
                 // TAMBAH button
-                val canSave = kategori.isNotEmpty() && namaBarang.isNotBlank() && satuan.isNotEmpty() &&
-                    uiState !is KatalogUiState.Loading
+                val isSaving = uiState is KatalogUiState.Loading
+                val canSave = kategori.isNotEmpty() && namaBarang.isNotBlank() && satuan.isNotEmpty() && !isSaving
                 Box(
                     modifier = Modifier.fillMaxWidth().height(62.dp).clip(RoundedCornerShape(14.dp))
-                        .background(if (canSave) Navy else Color(0xFFB0BEC5))
+                        .background(if (canSave || isSaving) Navy else Color(0xFFB0BEC5))
                         .clickable(enabled = canSave) {
                             viewModel.tambahKatalog(kategori, namaBarang, satuan, 0, generatedSku)
                         },
                     contentAlignment = Alignment.Center
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.AddBox, null, tint = Color.White, modifier = Modifier.size(24.dp))
-                        Spacer(Modifier.width(10.dp))
-                        Text("TAMBAH KE KATALOG", fontSize = 16.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp, color = Color.White)
+                    if (isSaving) {
+                        CircularProgressIndicator(color = Color.White, strokeWidth = 2.5.dp, modifier = Modifier.size(26.dp))
+                    } else {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.AddBox, null, tint = Color.White, modifier = Modifier.size(24.dp))
+                            Spacer(Modifier.width(10.dp))
+                            Text("TAMBAH KE KATALOG", fontSize = 16.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp, color = Color.White)
+                        }
                     }
                 }
             }

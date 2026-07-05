@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -46,6 +47,7 @@ import androidx.navigation.NavController
 import com.ta.konstruksi.domain.model.MasterKatalog
 import com.ta.konstruksi.presentation.navigation.Screen
 import com.ta.konstruksi.presentation.ui.component.AppBottomBar
+import com.ta.konstruksi.presentation.ui.component.AppLoading
 import com.ta.konstruksi.presentation.ui.component.SyncStatusBadge
 import com.ta.konstruksi.presentation.ui.theme.AppBackground
 import com.ta.konstruksi.presentation.ui.theme.BorderLight
@@ -62,6 +64,7 @@ fun KatalogScreen(
     viewModel: KatalogViewModel = hiltViewModel()
 ) {
     val katalogList by viewModel.katalogList.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     var searchQuery by remember { mutableStateOf("") }
 
     val filtered = katalogList.filter {
@@ -72,10 +75,10 @@ fun KatalogScreen(
     Box(modifier = Modifier.fillMaxSize().background(AppBackground)) {
         Column(modifier = Modifier.fillMaxSize()) {
             // Header
-            Column(modifier = Modifier.fillMaxWidth().background(Navy).padding(start = 4.dp, end = 16.dp, top = 12.dp, bottom = 14.dp)) {
+            Column(modifier = Modifier.fillMaxWidth().background(Navy).statusBarsPadding().padding(start = 4.dp, end = 16.dp, top = 12.dp, bottom = 14.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Color.White)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali", tint = Color.White)
                     }
                     Text("Katalog Master Aset", fontSize = 18.sp, fontWeight = FontWeight.Black, color = Color.White, modifier = Modifier.weight(1f))
                 }
@@ -100,7 +103,9 @@ fun KatalogScreen(
                 }
             }
 
-            if (filtered.isEmpty()) {
+            if (isLoading) {
+                AppLoading(modifier = Modifier.weight(1f).fillMaxWidth())
+            } else if (filtered.isEmpty()) {
                 val isSearching = searchQuery.isNotBlank()
                 Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(40.dp)) {
@@ -124,7 +129,10 @@ fun KatalogScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     items(filtered) { item ->
-                        KatalogItemCard(item = item)
+                        KatalogItemCard(
+                            item = item,
+                            onClick = { navController.navigate(Screen.DetailBarang.createRoute(item.sku_id)) }
+                        )
                     }
                     item { Spacer(Modifier.height(118.dp)) }
                 }
@@ -138,7 +146,7 @@ fun KatalogScreen(
                 .background(Navy).clickable { navController.navigate(Screen.TambahKatalog.route) },
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Default.Add, null, tint = Color.White, modifier = Modifier.size(32.dp))
+            Icon(Icons.Default.Add, contentDescription = "Tambah barang", tint = Color.White, modifier = Modifier.size(32.dp))
         }
 
         // Navbar bawah bersama
@@ -151,17 +159,17 @@ fun KatalogScreen(
 }
 
 @Composable
-private fun KatalogItemCard(item: MasterKatalog) {
+private fun KatalogItemCard(item: MasterKatalog, onClick: () -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Color.White)
-            .border(1.5.dp, BorderLight, RoundedCornerShape(14.dp)).padding(13.dp),
+            .border(1.5.dp, BorderLight, RoundedCornerShape(14.dp)).clickable(onClick = onClick).padding(13.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             modifier = Modifier.size(44.dp).clip(RoundedCornerShape(10.dp)).background(Color(0xFFeef1f3)),
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Default.Inventory, null, tint = Navy, modifier = Modifier.size(24.dp))
+            Icon(Icons.Default.Inventory, contentDescription = null, tint = Navy, modifier = Modifier.size(24.dp))
         }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
