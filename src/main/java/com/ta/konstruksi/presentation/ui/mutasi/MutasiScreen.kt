@@ -88,6 +88,7 @@ import com.ta.konstruksi.presentation.viewmodel.KatalogViewModel
 import com.ta.konstruksi.presentation.viewmodel.MutasiUiState
 import com.ta.konstruksi.presentation.viewmodel.MutasiViewModel
 import com.ta.konstruksi.util.JenisMutasi
+import com.ta.konstruksi.util.KategoriBarang
 import com.ta.konstruksi.util.KondisiBarang
 
 @Composable
@@ -127,6 +128,8 @@ fun MutasiScreen(
     }
 
     val filteredItems = katalogList.filter { selectedKategori.isEmpty() || it.kategori == selectedKategori }
+    // Kondisi barang hanya relevan (dan wajib) untuk kategori "alat" (aturan F3)
+    val isAlat = selectedItem?.kategori == KategoriBarang.ALAT
 
     LaunchedEffect(uiState) {
         if (uiState is MutasiUiState.Success) showSuccess = true
@@ -177,13 +180,13 @@ fun MutasiScreen(
                 var kategoriExpanded by remember { mutableStateOf(false) }
                 Box {
                     DropdownField(
-                        value = selectedKategori.ifEmpty { "Pilih Kategori" },
+                        value = if (selectedKategori.isEmpty()) "Pilih Kategori" else KategoriBarang.label(selectedKategori),
                         isPlaceholder = selectedKategori.isEmpty(),
                         onClick = { kategoriExpanded = true }
                     )
                     AppDropdownMenu(expanded = kategoriExpanded, onDismissRequest = { kategoriExpanded = false }) {
                         kategoriList.forEach { kat ->
-                            AppDropdownItem(text = kat, selected = kat == selectedKategori, onClick = {
+                            AppDropdownItem(text = KategoriBarang.label(kat), selected = kat == selectedKategori, onClick = {
                                 selectedKategori = kat; selectedItem = null; jumlahText = "1"; kategoriExpanded = false
                             })
                         }
@@ -286,27 +289,29 @@ fun MutasiScreen(
 
                 Spacer(Modifier.height(22.dp))
 
-                // Kondisi Barang
-                FormLabel("Kondisi Barang")
-                Spacer(Modifier.height(8.dp))
-                var kondisiExpanded by remember { mutableStateOf(false) }
-                Box {
-                    DropdownField(
-                        value = kondisi.label(),
-                        isPlaceholder = false,
-                        isSelected = true,
-                        onClick = { kondisiExpanded = true }
-                    )
-                    AppDropdownMenu(expanded = kondisiExpanded, onDismissRequest = { kondisiExpanded = false }) {
-                        KondisiBarang.entries.forEach { k ->
-                            AppDropdownItem(text = k.label(), selected = k == kondisi, onClick = {
-                                kondisi = k; kondisiExpanded = false
-                            })
+                // Kondisi Barang — HANYA untuk kategori "alat" (bahan & scaffolding tidak relevan)
+                if (isAlat) {
+                    FormLabel("Kondisi Barang", subtitle = "(wajib untuk alat)")
+                    Spacer(Modifier.height(8.dp))
+                    var kondisiExpanded by remember { mutableStateOf(false) }
+                    Box {
+                        DropdownField(
+                            value = kondisi.label(),
+                            isPlaceholder = false,
+                            isSelected = true,
+                            onClick = { kondisiExpanded = true }
+                        )
+                        AppDropdownMenu(expanded = kondisiExpanded, onDismissRequest = { kondisiExpanded = false }) {
+                            KondisiBarang.entries.forEach { k ->
+                                AppDropdownItem(text = k.label(), selected = k == kondisi, onClick = {
+                                    kondisi = k; kondisiExpanded = false
+                                })
+                            }
                         }
                     }
-                }
 
-                Spacer(Modifier.height(18.dp))
+                    Spacer(Modifier.height(18.dp))
+                }
 
                 // Lokasi Penggunaan (wajib)
                 FormLabel("Lokasi Penggunaan")
@@ -446,7 +451,7 @@ fun MutasiScreen(
             jenis = jenis,
             item = itemToConfirm,
             jumlah = jumlah,
-            kondisi = kondisi,
+            kondisi = if (isAlat) kondisi else null,
             lokasi = lokasiPenggunaan,
             penanggungjawab = penanggungjawab,
             onDismiss = { showConfirm = false },
@@ -456,7 +461,7 @@ fun MutasiScreen(
                     skuId = itemToConfirm.sku_id,
                     jenis = jenis,
                     jumlah = jumlah,
-                    kondisi = kondisi,
+                    kondisi = if (isAlat) kondisi else null,
                     lokasiPenggunaan = lokasiPenggunaan,
                     penanggungjawab = penanggungjawab,
                     catatan = catatan.ifBlank { null }
@@ -492,7 +497,7 @@ private fun MutasiConfirmDialog(
     jenis: JenisMutasi,
     item: MasterKatalog,
     jumlah: Int,
-    kondisi: KondisiBarang,
+    kondisi: KondisiBarang?,
     lokasi: String,
     penanggungjawab: String,
     onDismiss: () -> Unit,
@@ -545,7 +550,7 @@ private fun MutasiConfirmDialog(
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text(item.nama_barang, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Navy)
-                    Text(item.kategori, fontSize = 12.sp, color = TextSubtle)
+                    Text(KategoriBarang.label(item.kategori), fontSize = 12.sp, color = TextSubtle)
                 }
                 Text(
                     "${if (isOut) "−" else "+"}$jumlah",
@@ -557,7 +562,7 @@ private fun MutasiConfirmDialog(
             Spacer(Modifier.height(14.dp))
 
             // Detail berikon
-            ConfirmDetailRow(Icons.Default.Check, "Kondisi", kondisi.label())
+            if (kondisi != null) ConfirmDetailRow(Icons.Default.Check, "Kondisi", kondisi.label())
             ConfirmDetailRow(Icons.Default.Place, "Lokasi", lokasi)
             ConfirmDetailRow(Icons.Default.Person, "Penanggung Jawab", penanggungjawab)
 
@@ -760,7 +765,7 @@ private fun BarangPickerDialog(
                             Spacer(Modifier.width(12.dp))
                             Column(Modifier.weight(1f)) {
                                 Text(item.nama_barang, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Navy)
-                                Text(item.kategori, fontSize = 11.sp, color = TextSubtle)
+                                Text(KategoriBarang.label(item.kategori), fontSize = 11.sp, color = TextSubtle)
                             }
                             Text(
                                 "${item.stok_lokal} ${item.satuan}",

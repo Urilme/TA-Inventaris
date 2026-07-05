@@ -59,6 +59,7 @@ import com.ta.konstruksi.presentation.viewmodel.KatalogViewModel
 import com.ta.konstruksi.presentation.viewmodel.RiwayatItem
 import com.ta.konstruksi.presentation.viewmodel.RiwayatViewModel
 import com.ta.konstruksi.util.JenisMutasi
+import com.ta.konstruksi.util.KategoriBarang
 import com.ta.konstruksi.util.KondisiBarang
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -121,7 +122,7 @@ fun DetailBarangScreen(
                                 Spacer(Modifier.width(12.dp))
                                 Column(Modifier.weight(1f)) {
                                     Text(item.nama_barang, fontSize = 17.sp, fontWeight = FontWeight.Black, color = Navy)
-                                    Text(item.kategori, fontSize = 12.sp, color = TextSubtle)
+                                    Text(KategoriBarang.label(item.kategori), fontSize = 12.sp, color = TextSubtle)
                                 }
                                 SyncStatusBadge(status = item.sync_status)
                             }
@@ -210,7 +211,7 @@ private fun MutasiRingkasCard(m: LogMutasi) {
             SyncStatusBadge(status = m.sync_status)
         }
         Spacer(Modifier.height(10.dp))
-        KondisiBadge(m.kondisi_barang)
+        m.kondisi_barang?.let { KondisiBadge(it) }   // kondisi hanya ada untuk kategori "alat"
         if (m.lokasi_penggunaan.isNotBlank()) {
             Spacer(Modifier.height(6.dp))
             Text("Lokasi: ${m.lokasi_penggunaan}", fontSize = 12.sp, color = TextSubtle)

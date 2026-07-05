@@ -57,6 +57,7 @@ import com.ta.konstruksi.presentation.ui.theme.Navy
 import com.ta.konstruksi.presentation.ui.theme.RedMain
 import com.ta.konstruksi.presentation.ui.theme.TextSubtle
 import com.ta.konstruksi.presentation.viewmodel.KatalogViewModel
+import com.ta.konstruksi.util.KategoriBarang
 
 @Composable
 fun KatalogScreen(
@@ -174,7 +175,7 @@ private fun KatalogItemCard(item: MasterKatalog, onClick: () -> Unit) {
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(item.nama_barang, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Navy)
-            Text(item.kategori, fontSize = 12.sp, color = TextSubtle)
+            Text(KategoriBarang.label(item.kategori), fontSize = 12.sp, color = TextSubtle)
             Spacer(Modifier.height(4.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.QrCode, null, tint = TextSubtle, modifier = Modifier.size(13.dp))

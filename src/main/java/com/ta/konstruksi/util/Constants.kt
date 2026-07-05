@@ -15,3 +15,23 @@ object Constants {
     const val COLLECTION_MUTASI = "mutasi"
     const val COLLECTION_TRANSFER = "transfer"
 }
+
+/**
+ * Tiga kategori barang tetap. Aturan bisnis (F3): hanya kategori [ALAT] yang
+ * mewajibkan pengisian kondisi_barang; [BAHAN] & [SCAFFOLDING] selalu null.
+ */
+object KategoriBarang {
+    const val ALAT = "alat"
+    const val BAHAN = "bahan"
+    const val SCAFFOLDING = "scaffolding"
+
+    val ALL = listOf(ALAT, BAHAN, SCAFFOLDING)
+
+    /** Label tampilan untuk nilai kategori kanonik. */
+    fun label(value: String): String = when (value) {
+        ALAT -> "Alat"
+        BAHAN -> "Bahan"
+        SCAFFOLDING -> "Scaffolding"
+        else -> value.replaceFirstChar { it.uppercase() }
+    }
+}

@@ -14,9 +14,9 @@ class MutasiRepositoryImpl @Inject constructor(
     override fun getAllMutasi(): Flow<List<LogMutasi>> =
         mutasiDao.getAllMutasi().map { list -> list.map { it.toDomain() } }
 
-    // Hanya mencatat log; pembaruan stok dilakukan di RecordMutasiUseCase agar tidak ganda
-    override suspend fun recordMutasi(mutasi: LogMutasi) =
-        mutasiDao.insert(mutasi.toEntity())
+    // Insert log + update stok dalam satu transaksi atomik (mencegah race condition stok minus)
+    override suspend fun recordMutasiWithStock(mutasi: LogMutasi, delta: Int): Boolean =
+        mutasiDao.recordMutasiAtomic(mutasi.toEntity(), delta)
 
     override suspend fun getPendingMutasi(): List<LogMutasi> =
         mutasiDao.getPending().map { it.toDomain() }

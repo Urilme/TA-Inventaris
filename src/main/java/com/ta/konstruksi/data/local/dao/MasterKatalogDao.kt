@@ -21,8 +21,12 @@ interface MasterKatalogDao {
     @Query("UPDATE master_katalog SET stok_lokal = stok_lokal + :delta, sync_status = 'PENDING' WHERE sku_id = :skuId")
     suspend fun updateStok(skuId: String, delta: Int)
 
-    @Query("SELECT * FROM master_katalog WHERE sync_status = 'PENDING'")
+    // Sertakan IN_TRANSIT agar item yang tersinkron terputus dipulihkan pada siklus berikutnya
+    @Query("SELECT * FROM master_katalog WHERE sync_status IN ('PENDING', 'IN_TRANSIT')")
     suspend fun getPendingSync(): List<MasterKatalogEntity>
+
+    @Query("UPDATE master_katalog SET sync_status = :status WHERE sku_id = :skuId")
+    suspend fun updateSyncStatus(skuId: String, status: String)
 
     @Query("UPDATE master_katalog SET sync_status = 'SYNCED' WHERE sku_id = :skuId")
     suspend fun markSynced(skuId: String)

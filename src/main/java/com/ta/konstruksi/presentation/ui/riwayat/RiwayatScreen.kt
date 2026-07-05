@@ -280,7 +280,8 @@ private fun RiwayatCard(item: RiwayatItem) {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    KondisiBadge(m.kondisi_barang)
+                    // Kondisi hanya relevan untuk kategori "alat"; bila null tampilkan placeholder
+                    if (m.kondisi_barang != null) KondisiBadge(m.kondisi_barang) else Spacer(Modifier.width(1.dp))
                     SyncStatusBadge(status = m.sync_status)
                 }
 

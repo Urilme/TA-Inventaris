@@ -47,6 +47,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.ta.konstruksi.domain.model.MasterKatalog
+import com.ta.konstruksi.util.KategoriBarang
 import com.ta.konstruksi.presentation.navigation.Screen
 import com.ta.konstruksi.presentation.ui.component.AppBottomBar
 import com.ta.konstruksi.presentation.ui.component.AppLoading
@@ -379,7 +380,7 @@ private fun LowStockCard(item: MasterKatalog, isCritical: Boolean) {
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(item.nama_barang, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Navy)
-            Text(item.kategori, fontSize = 12.sp, color = TextSubtle)
+            Text(KategoriBarang.label(item.kategori), fontSize = 12.sp, color = TextSubtle)
         }
         Column(horizontalAlignment = Alignment.End) {
             Text(

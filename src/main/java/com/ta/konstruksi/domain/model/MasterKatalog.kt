@@ -8,6 +8,7 @@ data class MasterKatalog(
     val nama_barang: String,
     val satuan: String,
     val stok_lokal: Int,
+    val stok_minimum: Int = 0,             // ambang peringatan stok di Dashboard (F2)
     val sync_status: SyncStatus = SyncStatus.PENDING,
     val local_timestamp: Long = System.currentTimeMillis()
 )

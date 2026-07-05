@@ -15,8 +15,12 @@ interface TransferProyekDao {
     @Query("UPDATE transfer_proyek SET status_transfer = :status, sync_status = 'PENDING' WHERE id_transfer = :id")
     suspend fun updateStatus(id: String, status: String)
 
-    @Query("SELECT * FROM transfer_proyek WHERE sync_status = 'PENDING'")
+    // Sertakan IN_TRANSIT agar item yang tersinkron terputus dipulihkan pada siklus berikutnya
+    @Query("SELECT * FROM transfer_proyek WHERE sync_status IN ('PENDING', 'IN_TRANSIT')")
     suspend fun getPending(): List<TransferProyekEntity>
+
+    @Query("UPDATE transfer_proyek SET sync_status = :status WHERE id_transfer = :id")
+    suspend fun updateSyncStatus(id: String, status: String)
 
     @Query("UPDATE transfer_proyek SET sync_status = 'SYNCED' WHERE id_transfer = :id")
     suspend fun markSynced(id: String)

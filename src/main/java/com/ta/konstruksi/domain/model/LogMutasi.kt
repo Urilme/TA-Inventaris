@@ -11,7 +11,7 @@ data class LogMutasi(
     val id_proyek: String,                 // proyek tempat mutasi terjadi
     val jenis_mutasi: JenisMutasi,
     val jumlah: Int,
-    val kondisi_barang: KondisiBarang = KondisiBarang.BAIK, // kondisi fisik aset saat transaksi
+    val kondisi_barang: KondisiBarang? = null, // wajib utk "alat", null utk bahan/scaffolding (F3)
     val lokasi_penggunaan: String,         // area spesifik dalam proyek
     val penanggungjawab: String,           // nama mandor pemegang aset
     val catatan: String? = null,

@@ -33,11 +33,59 @@ object DatabaseModule {
         }
     }
 
+    /**
+     * Migrasi v2 → v3:
+     *  - master_katalog: tambah kolom stok_minimum (ambang peringatan Dashboard).
+     *  - log_mutasi: jadikan kondisi_barang NULLABLE (SQLite tak bisa melonggarkan NOT NULL
+     *    secara langsung, jadi tabel direkreasi lalu datanya disalin).
+     */
+    val MIGRATION_2_3 = object : Migration(2, 3) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // 1) Kolom stok_minimum pada master_katalog
+            db.execSQL("ALTER TABLE master_katalog ADD COLUMN stok_minimum INTEGER NOT NULL DEFAULT 0")
+
+            // 2) Rekreasi log_mutasi dengan kondisi_barang nullable
+            db.execSQL(
+                """
+                CREATE TABLE log_mutasi_new (
+                    id_transaksi TEXT NOT NULL,
+                    sku_id TEXT NOT NULL,
+                    id_mandor TEXT NOT NULL DEFAULT '',
+                    id_proyek TEXT NOT NULL DEFAULT '',
+                    jenis_mutasi TEXT NOT NULL,
+                    jumlah INTEGER NOT NULL,
+                    kondisi_barang TEXT,
+                    lokasi_penggunaan TEXT NOT NULL DEFAULT '',
+                    penanggungjawab TEXT NOT NULL DEFAULT '',
+                    catatan TEXT,
+                    local_timestamp INTEGER NOT NULL,
+                    sync_status TEXT NOT NULL,
+                    PRIMARY KEY(id_transaksi),
+                    FOREIGN KEY(sku_id) REFERENCES master_katalog(sku_id) ON UPDATE NO ACTION ON DELETE RESTRICT
+                )
+                """.trimIndent()
+            )
+            db.execSQL(
+                """
+                INSERT INTO log_mutasi_new (
+                    id_transaksi, sku_id, id_mandor, id_proyek, jenis_mutasi, jumlah,
+                    kondisi_barang, lokasi_penggunaan, penanggungjawab, catatan, local_timestamp, sync_status
+                )
+                SELECT id_transaksi, sku_id, id_mandor, id_proyek, jenis_mutasi, jumlah,
+                    kondisi_barang, lokasi_penggunaan, penanggungjawab, catatan, local_timestamp, sync_status
+                FROM log_mutasi
+                """.trimIndent()
+            )
+            db.execSQL("DROP TABLE log_mutasi")
+            db.execSQL("ALTER TABLE log_mutasi_new RENAME TO log_mutasi")
+        }
+    }
+
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): KonstruksiDatabase =
         Room.databaseBuilder(context, KonstruksiDatabase::class.java, Constants.DATABASE_NAME)
-            .addMigrations(MIGRATION_1_2)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
             .build()
 
     @Provides fun provideUserSessionDao(db: KonstruksiDatabase): UserSessionDao = db.userSessionDao()

@@ -61,6 +61,7 @@ import com.ta.konstruksi.presentation.ui.theme.TextPrimary
 import com.ta.konstruksi.presentation.ui.theme.TextSubtle
 import com.ta.konstruksi.presentation.viewmodel.TransferUiState
 import com.ta.konstruksi.presentation.viewmodel.TransferViewModel
+import com.ta.konstruksi.util.KategoriBarang
 import com.ta.konstruksi.util.StatusTransfer
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -122,7 +123,7 @@ fun TransferDetailScreen(
                                 katalogItem?.nama_barang ?: transfer.sku_id,
                                 fontSize = 18.sp, fontWeight = FontWeight.Black, color = Navy
                             )
-                            Text(katalogItem?.kategori ?: "", fontSize = 12.sp, color = TextSubtle)
+                            Text(katalogItem?.kategori?.let { KategoriBarang.label(it) } ?: "", fontSize = 12.sp, color = TextSubtle)
                         }
                     }
 
@@ -132,7 +133,7 @@ fun TransferDetailScreen(
                             .border(1.5.dp, BorderLight, RoundedCornerShape(14.dp)).padding(horizontal = 16.dp)
                     ) {
                         DetailRow("Nama Barang", katalogItem?.nama_barang ?: transfer.sku_id)
-                        DetailRow("Kategori", katalogItem?.kategori ?: "-")
+                        DetailRow("Kategori", katalogItem?.kategori?.let { KategoriBarang.label(it) } ?: "-")
                         DetailRow("Jumlah", "${transfer.jumlah} ${katalogItem?.satuan ?: "unit"}")
                         DetailRow("Dari Proyek", transfer.proyek_asal)
                         DetailRow("Ke Proyek", transfer.proyek_tujuan, isLast = false, isHighlight = true)

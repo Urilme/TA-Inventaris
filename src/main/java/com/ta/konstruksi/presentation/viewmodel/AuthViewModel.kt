@@ -3,6 +3,7 @@ package com.ta.konstruksi.presentation.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ta.konstruksi.domain.model.UserSession
+import com.ta.konstruksi.domain.repository.AuthRepository
 import com.ta.konstruksi.domain.usecase.auth.LoginUseCase
 import com.ta.konstruksi.domain.usecase.auth.LogoutUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -21,11 +22,23 @@ sealed interface AuthUiState {
 @HiltViewModel
 class AuthViewModel @Inject constructor(
     private val loginUseCase: LoginUseCase,
-    private val logoutUseCase: LogoutUseCase
+    private val logoutUseCase: LogoutUseCase,
+    private val authRepository: AuthRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<AuthUiState>(AuthUiState.Idle)
     val uiState: StateFlow<AuthUiState> = _uiState
+
+    // Pengecekan sesi saat aplikasi dibuka: null = sedang cek, true = sudah login, false = belum.
+    // Dipakai untuk melewati LoginScreen bila sesi tersimpan masih ada (mendukung mode luring).
+    private val _startupLoggedIn = MutableStateFlow<Boolean?>(null)
+    val startupLoggedIn: StateFlow<Boolean?> = _startupLoggedIn
+
+    init {
+        viewModelScope.launch {
+            _startupLoggedIn.value = authRepository.getLocalSession() != null
+        }
+    }
 
     fun login(email: String, password: String) {
         viewModelScope.launch {

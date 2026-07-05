@@ -43,7 +43,14 @@ class KatalogViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<KatalogUiState>(KatalogUiState.Idle)
     val uiState: StateFlow<KatalogUiState> = _uiState
 
-    fun tambahKatalog(kategori: String, namaBarang: String, satuan: String, stokAwal: Int, skuId: String = UuidGenerator.generateSkuId()) {
+    fun tambahKatalog(
+        kategori: String,
+        namaBarang: String,
+        satuan: String,
+        stokAwal: Int,
+        stokMinimum: Int = 0,
+        skuId: String = UuidGenerator.generateSkuId()
+    ) {
         viewModelScope.launch {
             _uiState.value = KatalogUiState.Loading
             try {
@@ -53,7 +60,8 @@ class KatalogViewModel @Inject constructor(
                         kategori = kategori,
                         nama_barang = namaBarang,
                         satuan = satuan,
-                        stok_lokal = stokAwal
+                        stok_lokal = stokAwal,
+                        stok_minimum = stokMinimum
                     )
                 )
                 _uiState.value = KatalogUiState.Success

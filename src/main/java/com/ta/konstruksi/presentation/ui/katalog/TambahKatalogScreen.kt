@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -43,6 +44,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -64,9 +66,11 @@ import com.ta.konstruksi.presentation.ui.theme.TextPrimary
 import com.ta.konstruksi.presentation.ui.theme.TextSubtle
 import com.ta.konstruksi.presentation.viewmodel.KatalogUiState
 import com.ta.konstruksi.presentation.viewmodel.KatalogViewModel
+import com.ta.konstruksi.util.KategoriBarang
 import com.ta.konstruksi.util.UuidGenerator
 
-private val kategoriOptions = listOf("Material Struktur", "Finishing", "Mekanikal", "Elektrikal", "Alat Berat", "Lainnya")
+// Tiga kategori kanonik (alat/bahan/scaffolding). Nilai disimpan kanonik, ditampilkan sbg label.
+private val kategoriOptions = KategoriBarang.ALL
 private val satuanOptions = listOf("Sak", "Batang", "Pcs", "Dus", "Liter", "Meter", "M²", "M³", "Buah", "Kg", "Ton")
 
 @Composable
@@ -78,6 +82,8 @@ fun TambahKatalogScreen(
     var kategori by remember { mutableStateOf("") }
     var namaBarang by remember { mutableStateOf("") }
     var satuan by remember { mutableStateOf("") }
+    var stokMinimumText by remember { mutableStateOf("") }
+    val stokMinimum = stokMinimumText.toIntOrNull() ?: 0
     val generatedSku = remember { UuidGenerator.generateSkuId() }
     val snackbarHostState = remember { SnackbarHostState() }
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -138,7 +144,7 @@ fun TambahKatalogScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            kategori.ifEmpty { "Pilih Kategori" },
+                            if (kategori.isEmpty()) "Pilih Kategori" else KategoriBarang.label(kategori),
                             fontSize = 16.sp, fontWeight = FontWeight.Medium,
                             color = if (kategori.isEmpty()) TextSubtle else Navy, modifier = Modifier.weight(1f)
                         )
@@ -146,7 +152,7 @@ fun TambahKatalogScreen(
                     }
                     AppDropdownMenu(expanded = kategoriExpanded, onDismissRequest = { kategoriExpanded = false }) {
                         kategoriOptions.forEach { opt ->
-                            AppDropdownItem(text = opt, selected = opt == kategori, onClick = { kategori = opt; kategoriExpanded = false })
+                            AppDropdownItem(text = KategoriBarang.label(opt), selected = opt == kategori, onClick = { kategori = opt; kategoriExpanded = false })
                         }
                     }
                 }
@@ -197,6 +203,30 @@ fun TambahKatalogScreen(
 
                 Spacer(Modifier.height(18.dp))
 
+                // Stok Minimum (ambang peringatan Dashboard)
+                Text("Stok Minimum", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Dashboard menampilkan peringatan saat stok menyentuh/di bawah angka ini. Kosongkan bila tidak perlu.",
+                    fontSize = 12.sp, color = TextSubtle
+                )
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = stokMinimumText,
+                    onValueChange = { raw -> stokMinimumText = raw.filter { it.isDigit() }.take(6) },
+                    modifier = Modifier.fillMaxWidth().height(58.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Navy, unfocusedBorderColor = BorderInput,
+                        focusedContainerColor = Color.White, unfocusedContainerColor = Color.White
+                    ),
+                    placeholder = { Text("mis. 20 (opsional)", color = TextSubtle) },
+                    singleLine = true
+                )
+
+                Spacer(Modifier.height(18.dp))
+
                 // Info auto
                 Column(
                     modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
@@ -228,7 +258,7 @@ fun TambahKatalogScreen(
                     modifier = Modifier.fillMaxWidth().height(62.dp).clip(RoundedCornerShape(14.dp))
                         .background(if (canSave || isSaving) Navy else Color(0xFFB0BEC5))
                         .clickable(enabled = canSave) {
-                            viewModel.tambahKatalog(kategori, namaBarang, satuan, 0, generatedSku)
+                            viewModel.tambahKatalog(kategori, namaBarang, satuan, 0, stokMinimum, generatedSku)
                         },
                     contentAlignment = Alignment.Center
                 ) {

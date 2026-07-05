@@ -44,7 +44,7 @@ class MutasiViewModel @Inject constructor(
         skuId: String,
         jenis: JenisMutasi,
         jumlah: Int,
-        kondisi: KondisiBarang,
+        kondisi: KondisiBarang?,   // null untuk kategori bahan/scaffolding
         lokasiPenggunaan: String,
         penanggungjawab: String,
         catatan: String?

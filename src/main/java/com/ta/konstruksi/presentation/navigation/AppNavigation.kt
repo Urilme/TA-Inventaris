@@ -4,19 +4,29 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.ta.konstruksi.presentation.ui.auth.LoginScreen
+import com.ta.konstruksi.presentation.ui.component.AppLoading
+import com.ta.konstruksi.presentation.ui.theme.AppBackground
+import com.ta.konstruksi.presentation.viewmodel.AuthViewModel
 import com.ta.konstruksi.presentation.ui.dashboard.DashboardScreen
 import com.ta.konstruksi.presentation.ui.katalog.DetailBarangScreen
 import com.ta.konstruksi.presentation.ui.katalog.KatalogScreen
@@ -45,11 +55,21 @@ sealed class Screen(val route: String) {
 }
 
 @Composable
-fun AppNavigation() {
+fun AppNavigation(authViewModel: AuthViewModel = hiltViewModel()) {
     val navController = rememberNavController()
     val isOnline = rememberIsOnline()
 
-    NavHost(navController = navController, startDestination = Screen.Login.route) {
+    // Cek sesi tersimpan sebelum menentukan layar awal (dukungan luring: lewati Login bila sudah masuk)
+    val startupLoggedIn by authViewModel.startupLoggedIn.collectAsStateWithLifecycle()
+    if (startupLoggedIn == null) {
+        Box(modifier = Modifier.fillMaxSize().background(AppBackground), contentAlignment = Alignment.Center) {
+            AppLoading()
+        }
+        return
+    }
+    val startDestination = if (startupLoggedIn == true) Screen.Dashboard.route else Screen.Login.route
+
+    NavHost(navController = navController, startDestination = startDestination) {
 
         composable(Screen.Login.route) {
             LoginScreen(
