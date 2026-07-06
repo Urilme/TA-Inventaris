@@ -16,10 +16,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Home
@@ -50,7 +50,7 @@ import com.ta.konstruksi.domain.model.MasterKatalog
 import com.ta.konstruksi.util.KategoriBarang
 import com.ta.konstruksi.presentation.navigation.Screen
 import com.ta.konstruksi.presentation.ui.component.AppBottomBar
-import com.ta.konstruksi.presentation.ui.component.AppLoading
+import com.ta.konstruksi.presentation.ui.component.DashboardSkeleton
 import com.ta.konstruksi.presentation.ui.component.NetworkBadge
 import com.ta.konstruksi.presentation.ui.theme.AmberBg
 import com.ta.konstruksi.presentation.ui.theme.AmberBorder
@@ -71,7 +71,7 @@ import com.ta.konstruksi.presentation.viewmodel.DashboardViewModel
 import com.ta.konstruksi.presentation.viewmodel.PendingSyncItem
 
 @Composable
-fun DashboardScreen(
+fun DashboardScreen(    
     navController: NavController,
     isOnline: Boolean = false,
     viewModel: DashboardViewModel = hiltViewModel()
@@ -106,17 +106,20 @@ fun DashboardScreen(
                             fontSize = 20.sp, fontWeight = FontWeight.Black, color = Color.White, letterSpacing = (-0.2).sp
                         )
                     }
-                    Row(
+                    // Avatar → buka Profil (logout kini ada di dalam Profil)
+                    val dashNama = state.session?.nama?.takeIf { it.isNotBlank() } ?: "Mandor"
+                    val dashInisial = dashNama.trim().split(" ").filter { it.isNotBlank() }
+                        .take(2).joinToString("") { it.first().uppercase() }.ifBlank { "M" }
+                    Box(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(10.dp))
-                            .border(1.5.dp, Color(0x4DFFFFFF), RoundedCornerShape(10.dp))
-                            .clickable { viewModel.logout(); navController.navigate(Screen.Login.route) { popUpTo(0) } }
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .background(Color(0x33FFFFFF))
+                            .border(1.5.dp, Color(0x4DFFFFFF), CircleShape)
+                            .clickable { navController.navigate(Screen.Profil.route) },
+                        contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("KELUAR", fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp, color = Color.White)
+                        Text(dashInisial, fontSize = 16.sp, fontWeight = FontWeight.Black, color = Color.White)
                     }
                 }
                 Spacer(Modifier.height(12.dp))
@@ -125,21 +128,24 @@ fun DashboardScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                         Icon(Icons.Default.LocationOn, contentDescription = null, tint = Color(0xFFF5B301), modifier = Modifier.size(17.dp))
                         Spacer(Modifier.width(6.dp))
                         Text(
-                            state.session?.role?.replaceFirstChar { c -> c.uppercase() } ?: "Mandor",
-                            fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Color(0xFFc7d2db)
+                            state.session?.nama_proyek?.takeIf { it.isNotBlank() } ?: "Proyek belum ditetapkan",
+                            fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Color(0xFFc7d2db),
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                         )
                     }
+                    Spacer(Modifier.width(10.dp))
                     NetworkBadge(isOnline = isOnline, onDarkBg = true)
                 }
             }
 
             // Content
             if (isLoading) {
-                AppLoading(modifier = Modifier.weight(1f).fillMaxWidth())
+                DashboardSkeleton(modifier = Modifier.weight(1f).fillMaxWidth())
             } else
             Column(
                 modifier = Modifier

@@ -32,6 +32,7 @@ import com.ta.konstruksi.presentation.ui.katalog.DetailBarangScreen
 import com.ta.konstruksi.presentation.ui.katalog.KatalogScreen
 import com.ta.konstruksi.presentation.ui.katalog.TambahKatalogScreen
 import com.ta.konstruksi.presentation.ui.mutasi.MutasiScreen
+import com.ta.konstruksi.presentation.ui.profile.ProfileScreen
 import com.ta.konstruksi.presentation.ui.riwayat.RiwayatScreen
 import com.ta.konstruksi.presentation.ui.transfer.TransferDetailScreen
 import com.ta.konstruksi.presentation.ui.transfer.TransferMasukScreen
@@ -52,6 +53,7 @@ sealed class Screen(val route: String) {
         fun createRoute(transferId: String) = "transfer_detail/$transferId"
     }
     object Riwayat : Screen("riwayat")
+    object Profil : Screen("profil")
 }
 
 @Composable
@@ -142,6 +144,17 @@ fun AppNavigation(authViewModel: AuthViewModel = hiltViewModel()) {
 
         composable(Screen.Riwayat.route) {
             RiwayatScreen(navController = navController, isOnline = isOnline)
+        }
+
+        composable(Screen.Profil.route) {
+            ProfileScreen(
+                onBack = { navController.popBackStack() },
+                onLoggedOut = {
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(0)
+                    }
+                }
+            )
         }
     }
 }

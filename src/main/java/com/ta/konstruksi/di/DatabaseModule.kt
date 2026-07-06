@@ -81,11 +81,32 @@ object DatabaseModule {
         }
     }
 
+    /**
+     * Migrasi v3 → v4: model kepemilikan proyek.
+     *  - user_session: tambah id_proyek & nama_proyek (proyek yang ditugaskan ke mandor).
+     *  - master_katalog: tambah id_proyek (katalog difilter per proyek).
+     * Semua kolom baru NOT NULL DEFAULT '' agar cocok dgn @ColumnInfo(defaultValue = "").
+     */
+    val MIGRATION_3_4 = object : Migration(3, 4) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE user_session ADD COLUMN id_proyek TEXT NOT NULL DEFAULT ''")
+            db.execSQL("ALTER TABLE user_session ADD COLUMN nama_proyek TEXT NOT NULL DEFAULT ''")
+            db.execSQL("ALTER TABLE master_katalog ADD COLUMN id_proyek TEXT NOT NULL DEFAULT ''")
+
+            // Backfill data lama ke proyek default ('PROYEK-UTAMA' = Constants.DEFAULT_PROYEK).
+            // Sebelum fitur ini hanya ada satu proyek implisit, jadi seluruh katalog & sesi
+            // yang sudah ada menjadi milik proyek default agar tidak "hilang" dari tampilan
+            // (yang kini disaring per proyek). Nilai di-hardcode karena migrasi harus statis.
+            db.execSQL("UPDATE master_katalog SET id_proyek = 'PROYEK-UTAMA' WHERE id_proyek = ''")
+            db.execSQL("UPDATE user_session SET id_proyek = 'PROYEK-UTAMA' WHERE id_proyek = ''")
+        }
+    }
+
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): KonstruksiDatabase =
         Room.databaseBuilder(context, KonstruksiDatabase::class.java, Constants.DATABASE_NAME)
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
             .build()
 
     @Provides fun provideUserSessionDao(db: KonstruksiDatabase): UserSessionDao = db.userSessionDao()

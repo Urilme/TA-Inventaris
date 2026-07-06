@@ -81,7 +81,9 @@ data class UserSession(
     val email: String,
     val role: String,                         // "mandor" | "admin"
     val auth_token: String,
-    val last_sync_timestamp: Long = 0L        // epoch millis, untuk delta sync
+    val last_sync_timestamp: Long = 0L,       // epoch millis, untuk delta sync
+    val id_proyek: String = "",               // proyek yang ditugaskan (dari Firestore users/{uid})
+    val nama_proyek: String = ""              // nama tampilan proyek — ditampilkan di Dashboard
 )
 ```
 
@@ -95,6 +97,7 @@ data class MasterKatalog(
     val satuan: String,
     val stok_lokal: Int,
     val stok_minimum: Int = 0,                // threshold peringatan stok minimum di Dashboard
+    val id_proyek: String = "",               // proyek pemilik barang — katalog difilter per proyek
     val sync_status: SyncStatus = SyncStatus.PENDING,
     val local_timestamp: Long = System.currentTimeMillis()
 )

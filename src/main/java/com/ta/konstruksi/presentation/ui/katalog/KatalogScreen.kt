@@ -47,7 +47,7 @@ import androidx.navigation.NavController
 import com.ta.konstruksi.domain.model.MasterKatalog
 import com.ta.konstruksi.presentation.navigation.Screen
 import com.ta.konstruksi.presentation.ui.component.AppBottomBar
-import com.ta.konstruksi.presentation.ui.component.AppLoading
+import com.ta.konstruksi.presentation.ui.component.ListSkeleton
 import com.ta.konstruksi.presentation.ui.component.SyncStatusBadge
 import com.ta.konstruksi.presentation.ui.theme.AppBackground
 import com.ta.konstruksi.presentation.ui.theme.BorderLight
@@ -105,7 +105,7 @@ fun KatalogScreen(
             }
 
             if (isLoading) {
-                AppLoading(modifier = Modifier.weight(1f).fillMaxWidth())
+                ListSkeleton(modifier = Modifier.weight(1f).fillMaxWidth())
             } else if (filtered.isEmpty()) {
                 val isSearching = searchQuery.isNotBlank()
                 Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {

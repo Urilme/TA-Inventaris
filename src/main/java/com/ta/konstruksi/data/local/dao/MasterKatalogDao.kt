@@ -6,8 +6,9 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface MasterKatalogDao {
-    @Query("SELECT * FROM master_katalog ORDER BY nama_barang ASC")
-    fun getAllKatalog(): Flow<List<MasterKatalogEntity>>
+    // Katalog difilter per proyek: mandor hanya melihat barang di proyeknya sendiri.
+    @Query("SELECT * FROM master_katalog WHERE id_proyek = :idProyek ORDER BY nama_barang ASC")
+    fun getAllKatalog(idProyek: String): Flow<List<MasterKatalogEntity>>
 
     @Query("SELECT * FROM master_katalog WHERE sku_id = :skuId")
     suspend fun getKatalogBySku(skuId: String): MasterKatalogEntity?

@@ -53,10 +53,11 @@ class MutasiViewModel @Inject constructor(
             _uiState.value = MutasiUiState.Loading
             // id_mandor & id_proyek diambil otomatis dari sesi login aktif — tidak diinput user
             val idMandor = _session.value?.id_mandor.orEmpty()
+            val idProyek = _session.value?.id_proyek?.takeIf { it.isNotBlank() } ?: Constants.DEFAULT_PROYEK
             recordMutasiUseCase(
                 skuId = skuId,
                 idMandor = idMandor,
-                idProyek = Constants.DEFAULT_PROYEK,
+                idProyek = idProyek,
                 jenisMutasi = jenis,
                 jumlah = jumlah,
                 kondisiBarang = kondisi,

@@ -71,7 +71,9 @@ class SyncRepositoryImpl @Inject constructor(
 
     override suspend fun pullLatestKatalog(): Result<Unit> = runCatching {
         val since = getLastSyncTimestamp()
-        val result = firestore.pullKatalog(since)
+        // Hanya tarik katalog milik proyek si mandor (scoping per proyek).
+        val proyek = userSessionDao.getSession()?.id_proyek.orEmpty()
+        val result = firestore.pullKatalog(since, proyek)
 
         // Last-Write-Wins: remote hanya menimpa lokal bila local_timestamp-nya lebih baru.
         result.items.forEach { remote ->

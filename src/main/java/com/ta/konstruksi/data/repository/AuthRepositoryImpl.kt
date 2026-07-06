@@ -7,8 +7,10 @@ import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.auth.FirebaseUser
 import com.ta.konstruksi.data.local.dao.UserSessionDao
 import com.ta.konstruksi.data.local.entity.UserSessionEntity
+import com.ta.konstruksi.data.remote.FirestoreDataSource
 import com.ta.konstruksi.domain.model.UserSession
 import com.ta.konstruksi.domain.repository.AuthRepository
+import com.ta.konstruksi.util.Constants
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 
@@ -24,7 +26,8 @@ import javax.inject.Inject
  */
 class AuthRepositoryImpl @Inject constructor(
     private val userSessionDao: UserSessionDao,
-    private val firebaseAuth: FirebaseAuth
+    private val firebaseAuth: FirebaseAuth,
+    private val firestore: FirestoreDataSource
 ) : AuthRepository {
 
     override suspend fun login(email: String, password: String): Result<UserSession> {
@@ -77,22 +80,39 @@ class AuthRepositoryImpl @Inject constructor(
         userSessionDao.getSession() != null || firebaseAuth.currentUser != null
 
     /**
-     * Bentuk [UserSession] dari [FirebaseUser]. Nama diambil dari displayName bila ada,
-     * jika tidak diturunkan dari bagian lokal email (mis. "budi.santoso" -> "Budi Santoso").
-     * `last_sync_timestamp` dipertahankan hanya bila sesi sebelumnya milik uid yang sama.
+     * Bentuk [UserSession] dari [FirebaseUser]. Profil mandor (nama, role, proyek yang ditugaskan)
+     * diambil dari dokumen Firestore `users/{uid}` yang di-provision oleh admin/website.
+     * Bila dokumen belum ada, dipakai nilai turunan/fallback agar login tetap berhasil.
+     * `last_sync_timestamp` & proyek sebelumnya dipertahankan bila sesi lama milik uid yang sama.
      */
     private suspend fun buatSesiDari(user: FirebaseUser, emailInput: String, token: String): UserSession {
         val email = user.email ?: emailInput
-        val nama = user.displayName?.takeIf { it.isNotBlank() } ?: namaDariEmail(email)
-        val existing = userSessionDao.getSession()
-        val lastSync = if (existing?.id_mandor == user.uid) existing.last_sync_timestamp else 0L
+        val existing = userSessionDao.getSession()?.takeIf { it.id_mandor == user.uid }
+        val lastSync = existing?.last_sync_timestamp ?: 0L
+
+        // Profil dari server (opsional — tidak boleh menggagalkan login bila luring/tak ada dokumen)
+        val profil = runCatching { firestore.fetchUserProfile(user.uid) }.getOrNull()
+
+        val nama = profil?.nama?.takeIf { it.isNotBlank() }
+            ?: user.displayName?.takeIf { it.isNotBlank() }
+            ?: namaDariEmail(email)
+        val role = profil?.role?.takeIf { it.isNotBlank() } ?: existing?.role ?: "mandor"
+        val idProyek = profil?.idProyek?.takeIf { it.isNotBlank() }
+            ?: existing?.id_proyek?.takeIf { it.isNotBlank() }
+            ?: Constants.DEFAULT_PROYEK
+        val namaProyek = profil?.namaProyek?.takeIf { it.isNotBlank() }
+            ?: existing?.nama_proyek?.takeIf { it.isNotBlank() }
+            ?: Constants.DEFAULT_NAMA_PROYEK
+
         return UserSession(
             id_mandor = user.uid,
             nama = nama,
             email = email,
-            role = "mandor",
+            role = role,
             auth_token = token,
-            last_sync_timestamp = lastSync
+            last_sync_timestamp = lastSync,
+            id_proyek = idProyek,
+            nama_proyek = namaProyek
         )
     }
 
@@ -110,7 +130,9 @@ class AuthRepositoryImpl @Inject constructor(
         email = email,
         role = role,
         auth_token = auth_token,
-        last_sync_timestamp = last_sync_timestamp
+        last_sync_timestamp = last_sync_timestamp,
+        id_proyek = id_proyek,
+        nama_proyek = nama_proyek
     )
 
     private fun UserSessionEntity.toDomain() = UserSession(
@@ -119,6 +141,8 @@ class AuthRepositoryImpl @Inject constructor(
         email = email,
         role = role,
         auth_token = auth_token,
-        last_sync_timestamp = last_sync_timestamp
+        last_sync_timestamp = last_sync_timestamp,
+        id_proyek = id_proyek,
+        nama_proyek = nama_proyek
     )
 }

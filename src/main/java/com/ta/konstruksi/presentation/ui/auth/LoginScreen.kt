@@ -1,5 +1,6 @@
 package com.ta.konstruksi.presentation.ui.auth
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -43,6 +44,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -52,6 +54,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.ta.konstruksi.R
 import com.ta.konstruksi.presentation.ui.component.NetworkBadge
 import com.ta.konstruksi.presentation.ui.theme.AmberBg
 import com.ta.konstruksi.presentation.ui.theme.AmberBorder
@@ -96,17 +99,13 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(64.dp))
 
             // Logo SKN
-            Box(
-                modifier = Modifier
-                    .size(76.dp)
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(Navy),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("SKN", color = Color.White, fontWeight = FontWeight.Black, fontSize = 26.sp, letterSpacing = 1.sp)
-            }
+            Image(
+                painter = painterResource(id = R.drawable.logo_skn),
+                contentDescription = "Logo SKN",
+                modifier = Modifier.size(96.dp)
+            )
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             Text(
                 "Sistem Monitoring\nAset & Inventaris",

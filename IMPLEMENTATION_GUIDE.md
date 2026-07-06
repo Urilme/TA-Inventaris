@@ -15,24 +15,89 @@ Setiap fitur bisa berdiri sendiri kecuali F3 butuh F2, dan F6 butuh semua fitur 
 
 ---
 
+## Status Implementasi (per 6 Juli 2026)
+
+| Fitur | Status | Catatan |
+|---|---|---|
+| **F1** Autentikasi & Sesi Offline | ✅ **Selesai** | Firebase Auth asli (login-only), offline-first, auto-login saat launch. Terverifikasi (login valid/salah, logout). |
+| **F2** Katalog & Dashboard Offline | ✅ **Selesai** | CRUD + `stok_minimum` + peringatan Dashboard. Dashboard didesain ulang (lihat catatan deviasi). |
+| **F3** Pencatatan Mutasi | ✅ **Selesai** | Validasi stok + aturan `kondisi_barang` (alat wajib) + update stok atomik (`@Transaction`). |
+| **F4** Transfer Antar Proyek | ✅ **Selesai** | Alur IN_TRANSIT → SELESAI, stok dipindah via ViewModel. |
+| **F5** Riwayat & Status Sinkronisasi | ✅ **Selesai** | Gabungan mutasi+transfer, filter, badge sinkron. |
+| **F6** Sinkronisasi Asinkron | ✅ **Selesai** | Delta sync, state machine IN_TRANSIT, LWW, `server_timestamp`+`updated_by`. |
+
+> **Deviasi desain yang disengaja (bukan bug):**
+> - **Sinkronisasi otomatis** menggantikan tombol "Sync Sekarang/Manual" — dipicu setelah setiap operasi tulis (via `SyncScheduler`) dan periodik 15 menit (WorkManager). Tidak ada tombol sync manual di UI.
+> - **Dashboard didesain ulang**: menampilkan "Mutasi Hari Ini", "Menunggu Sinkron", aksi cepat, dan "Stok Material Terendah" (berbasis `stok_minimum`) — bukan kartu "total SKU/total stok" atau "5 barang terakhir".
+> - **Hapus katalog**: logika (`hapusKatalog`) tersedia di ViewModel/Repository namun belum dipasang gestur (swipe/long-press) di UI.
+> - **Halaman Profil** (`ProfileScreen` + `ProfileViewModel`): diakses via **avatar inisial** di header Dashboard (menggantikan tombol "KELUAR"). Menampilkan identitas (nama, role, email, id_mandor), **Proyek Aktif** (nama_proyek + id_proyek), **Sinkronisasi** (waktu sinkron terakhir + jumlah menunggu), versi aplikasi, dan tombol **Keluar** (logout dipindah ke sini).
+
+---
+
+## Model Kepemilikan Proyek (Scoping per Proyek)
+
+Setiap mandor **ditugaskan ke satu proyek**. Aplikasi mobile hanya menampilkan katalog & data
+milik proyek si mandor — mandor tidak melihat aset proyek lain. Penugasan proyek (siapa di proyek
+mana) **dikelola di luar aplikasi mobile ini**, yaitu pada **website admin yang akan dibangun
+terpisah**. Aplikasi mobile hanya **membaca** penugasan tersebut, tidak mengubahnya.
+
+### Alur provisioning
+```
+[Website Admin]  --tulis-->  Firestore  users/{uid}  { nama, role, id_proyek, nama_proyek }
+                                   │
+                                   ▼ (saat login, sekali ambil)
+[App Mobile] AuthRepositoryImpl.buatSesiDari() → simpan ke UserSession (Room)
+                                   │
+                                   ▼ (dipakai offline seterusnya)
+     Katalog difilter WHERE id_proyek = UserSession.id_proyek
+     Mutasi baru diikat ke UserSession.id_proyek (bukan konstanta)
+     Dashboard menampilkan UserSession.nama_proyek pada slot lokasi (ikon 📍)
+```
+
+### Implementasi (Selesai)
+- [x] `UserSession` + `UserSessionEntity`: tambah `id_proyek` & `nama_proyek` (default `""`)
+- [x] `MasterKatalog` + `MasterKatalogEntity`: tambah `id_proyek` (barang milik proyek mana)
+- [x] Migrasi Room `v3 → v4` (`MIGRATION_3_4`): tambah kolom + **backfill** data lama ke
+      `PROYEK-UTAMA` agar katalog/sesi yang sudah ada tidak hilang dari tampilan
+- [x] `FirestoreDataSource.fetchUserProfile(uid)`: baca `users/{uid}` (nama, role, id_proyek, nama_proyek)
+- [x] `AuthRepositoryImpl.login()`: isi proyek dari profil server; fallback bila dokumen belum ada
+      (`Constants.DEFAULT_PROYEK` / `DEFAULT_NAMA_PROYEK`) — login tetap sukses walau luring/tanpa dokumen
+- [x] `MasterKatalogDao.getAllKatalog(idProyek)` + `KatalogRepositoryImpl` menyaring ke proyek aktif
+      dan **menstempel** `id_proyek` pada barang baru
+- [x] `MutasiViewModel`: `id_proyek` diambil dari sesi (bukan `Constants.DEFAULT_PROYEK`)
+- [x] `DashboardScreen`: slot lokasi (📍) menampilkan `nama_proyek` (dulu keliru menampilkan `role`)
+- [x] Sinkron: `pullKatalog(since, idProyek)` menyaring hasil ke proyek si mandor
+      (penyaringan di sisi klien agar cukup indeks satu-field `server_timestamp`, tanpa indeks komposit)
+
+### Catatan & batasan (jujur)
+- **Penyaringan mutasi/transfer belum di-scope per proyek** di UI riwayat — hanya **katalog** yang
+  disaring. Karena satu perangkat = satu mandor = satu proyek, mutasi/transfer yang tercatat di
+  perangkat itu memang milik proyek tersebut, jadi belum menjadi masalah pada skenario single-device.
+- **Provisioning `users/{uid}` belum otomatis**: dokumen ditulis manual/oleh website (belum ada).
+  Untuk akun uji `budi@skn.com` yang belum punya dokumen, proyek jatuh ke fallback `PROYEK-UTAMA`
+  sehingga Dashboard menampilkan "Proyek belum ditetapkan".
+- **Website admin adalah pekerjaan terpisah** (di luar cakupan TA aplikasi mobile ini).
+
+---
+
 ## F1 — Autentikasi & Manajemen Sesi Offline
 
 **Prioritas:** Wajib pertama — semua fitur lain bergantung pada sesi user.
 
 ### Checklist Implementasi
-- [ ] Setup Firebase project → download `google-services.json` → letakkan di `app/`
-- [ ] Implementasi `AuthRepositoryImpl`:
+- [x] Setup Firebase project → `google-services.json` (tersedia di root repo) — provider Email/Password aktif
+- [x] Implementasi `AuthRepositoryImpl`:
   - `login()`: panggil `FirebaseAuth.signInWithEmailAndPassword()`, simpan sesi ke `UserSessionDao`
   - `logout()`: panggil `FirebaseAuth.signOut()`, hapus sesi dari Room (`clearSession()`)
   - `getLocalSession()`: baca dari `UserSessionDao.getSession()`
-  - `isSessionValid()`: cek `auth_token` tidak expired (Firebase token valid 1 jam, refresh otomatis)
-- [ ] Implementasi `LoginScreen.kt`:
+  - `isSessionValid()`: cek sesi Room / `firebaseAuth.currentUser`
+- [x] Implementasi `LoginScreen.kt`:
   - TextField email + TextField password (PasswordVisualTransformation)
   - Tombol "Masuk" → trigger `AuthViewModel.login()`
   - Loading indicator saat state = `AuthUiState.Loading`
   - Error snackbar saat state = `AuthUiState.Error`
   - Navigasi ke Dashboard saat state = `AuthUiState.Success`
-- [ ] Cek sesi tersimpan saat app launch: jika ada sesi valid di Room → skip LoginScreen
+- [x] Cek sesi tersimpan saat app launch: jika ada sesi valid di Room → skip LoginScreen (`AppNavigation` + `AuthViewModel.startupLoggedIn`)
 
 ### Kriteria Selesai
 - Login dengan kredensial valid → masuk ke Dashboard ✓
@@ -47,26 +112,25 @@ Setiap fitur bisa berdiri sendiri kecuali F3 butuh F2, dan F6 butuh semua fitur 
 **Prioritas:** Wajib sebelum F3 dan F4.
 
 ### Checklist Implementasi
-- [ ] Implementasi `KatalogRepositoryImpl`:
+- [x] Implementasi `KatalogRepositoryImpl`:
   - `getAllKatalog()`: return `Flow` dari `MasterKatalogDao.getAllKatalog()`
   - `getKatalogBySku()`: query single item dari Room
   - `upsertKatalog()`: insert/update ke Room dengan `sync_status = PENDING`
-  - `deleteKatalog()`: hapus dari Room, tandai untuk sync (atau soft-delete)
+  - `deleteKatalog()`: hapus dari Room
   - `updateStokLokal()`: panggil `MasterKatalogDao.updateStok(skuId, delta)`
-- [ ] Implementasi `KatalogScreen.kt`:
+- [x] Implementasi `KatalogScreen.kt`:
   - `LazyColumn` daftar barang (collect dari `KatalogViewModel.katalogList`)
   - Setiap item tampilkan: nama barang, SKU, stok, satuan, badge sync status
-  - FAB "+" → navigasi ke `TambahKatalogScreen`
-  - Swipe-to-delete atau long press untuk hapus
-- [ ] Implementasi `TambahKatalogScreen.kt`:
-  - Form: kategori, nama barang, satuan, stok awal, **stok_minimum** (threshold peringatan)
+  - Item dapat diklik → `DetailBarangScreen`; FAB "+" → `TambahKatalogScreen`
+  - ⚠️ Swipe-to-delete/long-press: logika `hapusKatalog` ada, gestur UI belum dipasang
+- [x] Implementasi `TambahKatalogScreen.kt`:
+  - Form: kategori (3 kategori kanonik), nama barang, satuan, **stok_minimum** (threshold peringatan)
   - Tombol simpan → `KatalogViewModel.tambahKatalog()` → SKU di-generate otomatis via `UuidGenerator.generateSkuId()`
-- [ ] Implementasi `DashboardScreen.kt`:
-  - Kartu ringkasan: total SKU, total stok, jumlah PENDING sync
-  - Peringatan stok minimum: tampilkan barang yang `stok_lokal <= stok_minimum`
-  - List 5 barang terakhir diupdate
-  - Tombol "Sync Sekarang" → trigger `SyncViewModel`
-  - Indikator status sync terakhir + waktu
+- [x] Implementasi `DashboardScreen.kt` (didesain ulang):
+  - Kartu ringkasan: "Mutasi Hari Ini" + "Menunggu Sinkron" (jumlah PENDING)
+  - ✅ Peringatan stok minimum: barang yang `stok_lokal <= stok_minimum` ("Stok Material Terendah")
+  - Aksi cepat (Transfer, Katalog) + daftar item menunggu sinkron
+  - ⚠️ Kartu "total SKU/total stok" & "5 barang terakhir" tidak dipakai; sinkronisasi otomatis (tanpa tombol "Sync Sekarang")
 
 ### Kriteria Selesai
 - Tambah barang baru → muncul di daftar dengan SKU-XXXXXX ✓
@@ -81,7 +145,7 @@ Setiap fitur bisa berdiri sendiri kecuali F3 butuh F2, dan F6 butuh semua fitur 
 **Bergantung pada:** F2 (katalog harus ada)
 
 ### Checklist Implementasi
-- [ ] Tambahkan enum `KondisiBarang` dan konstanta `KategoriBarang` di `util/SyncStatus.kt`:
+- [x] Tambahkan enum `KondisiBarang` (`util/SyncStatus.kt`) dan konstanta `KategoriBarang` (`util/Constants.kt`):
   ```kotlin
   enum class KondisiBarang { BAIK, RUSAK_RINGAN, RUSAK_BERAT }
 
@@ -91,19 +155,19 @@ Setiap fitur bisa berdiri sendiri kecuali F3 butuh F2, dan F6 butuh semua fitur 
       const val SCAFFOLDING = "scaffolding" // kondisi_barang = null
   }
   ```
-- [ ] Update `LogMutasiEntity` dan domain model `LogMutasi` dengan atribut baru:
+- [x] Update `LogMutasiEntity` dan domain model `LogMutasi` dengan atribut baru:
   - `id_mandor: String` — auto-fill dari sesi login aktif
   - `id_proyek: String` — proyek tempat mutasi terjadi
   - `kondisi_barang: KondisiBarang? = null` — **nullable**, hanya wajib jika `kategori = "alat"`
   - `lokasi_penggunaan: String` — area spesifik dalam proyek
   - `penanggungjawab: String` — nama mandor pemegang aset
-- [ ] Buat Room DB Migration `version 1 → 2` untuk menambahkan kolom baru (JANGAN fallbackToDestructiveMigration)
-- [ ] Implementasi `MutasiRepositoryImpl`:
+- [x] Buat Room DB Migration `version 1 → 2` untuk menambahkan kolom baru (JANGAN fallbackToDestructiveMigration) — juga migrasi `2 → 3` (`stok_minimum` + `kondisi_barang` nullable)
+- [x] Implementasi `MutasiRepositoryImpl`:
   - `recordMutasi()`: insert `LogMutasiEntity` ke Room dengan semua atribut baru
   - `getAllMutasi()`: return `Flow` dari DAO
   - `getPendingMutasi()`: query `sync_status = 'PENDING'`
   - `markSynced()`: update `sync_status = 'SYNCED'`
-- [ ] Implementasi `MutasiScreen.kt`:
+- [x] Implementasi `MutasiScreen.kt`:
   - Dropdown pilih barang (dari katalog Room) — saat barang dipilih, baca `kategori`-nya
   - Toggle Check-In / Check-Out
   - Input jumlah (validasi numerik > 0)
@@ -114,13 +178,13 @@ Setiap fitur bisa berdiri sendiri kecuali F3 butuh F2, dan F6 butuh semua fitur 
   - `id_mandor` dan `id_proyek` diambil otomatis dari `UserSession` aktif — tidak ditampilkan ke user
   - Tombol simpan → `MutasiViewModel.recordMutasi()`
   - Validasi client-side: CHECK_OUT tidak boleh melebihi stok saat ini
-- [ ] `RecordMutasiUseCase` — tambahkan validasi kategori sebelum INSERT:
+- [x] `RecordMutasiUseCase` — validasi kategori sebelum INSERT:
   ```kotlin
   if (katalog.kategori == KategoriBarang.ALAT && mutasi.kondisi_barang == null) {
       return Result.failure("Kondisi barang wajib diisi untuk kategori alat")
   }
   ```
-- [ ] Pastikan `@Transaction` digunakan di DAO untuk update stok + insert mutasi agar atomic
+- [x] `@Transaction` digunakan di DAO untuk update stok + insert mutasi agar atomic (`LogMutasiDao.recordMutasiAtomic`)
 
 ### Aturan Bisnis Kategori (KRITIS)
 ```
@@ -164,11 +228,11 @@ CHECK_IN:
 **Bergantung pada:** F2 (katalog harus ada)
 
 ### Checklist Implementasi
-- [ ] Implementasi `TransferRepositoryImpl`:
+- [x] Implementasi `TransferRepositoryImpl`:
   - `createTransfer()`: insert `TransferProyekEntity` dengan `status_transfer = IN_TRANSIT`
   - `updateStatusTransfer()`: update status ke SELESAI atau DIBATALKAN
   - `getPendingTransfer()` + `markSynced()`
-- [ ] Implementasi `TransferScreen.kt`:
+- [x] Implementasi `TransferScreen.kt`:
   - Dropdown pilih barang (SKU)
   - Input proyek asal (lokasi saat ini)
   - Input proyek tujuan
@@ -187,12 +251,12 @@ CHECK_IN:
 ## F5 — Riwayat Transaksi & Status Sinkronisasi
 
 ### Checklist Implementasi
-- [ ] Implementasi `RiwayatScreen.kt`:
+- [x] Implementasi `RiwayatScreen.kt`:
   - Tab atau filter: "Mutasi" | "Transfer" | "Semua"
   - `LazyColumn` semua transaksi dengan `SyncStatusBadge`
   - Filter berdasarkan: tanggal range, jenis (CHECK_IN/CHECK_OUT), status sync
   - Setiap item tampilkan: nama barang, jenis, jumlah, waktu, status
-- [ ] Implement `RiwayatViewModel`:
+- [x] Implement `RiwayatViewModel`:
   - Collect `Flow` dari `MutasiRepository.getAllMutasi()` dan `TransferRepository.getAllTransfer()`
   - Combine dan sort berdasarkan `local_timestamp DESC`
 
@@ -208,10 +272,9 @@ CHECK_IN:
 **Bergantung pada:** Semua fitur F1–F5 harus selesai.
 
 ### Checklist Implementasi
-- [ ] Implementasi `FirestoreDataSource`:
-  - `uploadMutasi(list: List<LogMutasiEntity>)`: batch write ke Firestore collection `mutasi/`
-  - `uploadTransfer(list: List<TransferProyekEntity>)`: batch write ke `transfer/`
-  - `pullKatalog(since: Long)`: query Firestore `katalog/` dimana `server_timestamp > since`
+- [x] Implementasi `FirestoreDataSource`:
+  - `uploadMutasi/uploadTransfer/uploadKatalog(entity, updatedBy)`: tulis dokumen + `server_timestamp` (`FieldValue.serverTimestamp`) + `updated_by`
+  - `pullKatalog(since)`: query Firestore `katalog/` dimana `server_timestamp > since` (kursor delta bebas selisih jam)
 - [ ] Implementasi `SyncRepositoryImpl`:
   - `syncPendingMutasi()`:
     1. `logMutasiDao.getPending()` → ambil semua PENDING

@@ -29,6 +29,29 @@ class FirestoreDataSource @Inject constructor(
         val latestServerMillis: Long
     )
 
+    /** Profil mandor dari dokumen `users/{uid}` (di-provision admin/website). */
+    data class UserProfile(
+        val nama: String?,
+        val role: String?,
+        val idProyek: String?,
+        val namaProyek: String?
+    )
+
+    /**
+     * Ambil profil mandor dari `users/{uid}`. Mengembalikan null bila dokumen belum ada
+     * (mis. admin belum menugaskan proyek) — pemanggil wajib menyediakan fallback.
+     */
+    suspend fun fetchUserProfile(uid: String): UserProfile? {
+        val doc = firestore.collection(Constants.COLLECTION_USERS).document(uid).get().await()
+        if (!doc.exists()) return null
+        return UserProfile(
+            nama = doc.getString("nama"),
+            role = doc.getString("role"),
+            idProyek = doc.getString("id_proyek"),
+            namaProyek = doc.getString("nama_proyek")
+        )
+    }
+
     suspend fun uploadKatalog(entity: MasterKatalogEntity, updatedBy: String) {
         firestore.collection(Constants.COLLECTION_KATALOG)
             .document(entity.sku_id)
@@ -51,10 +74,16 @@ class FirestoreDataSource @Inject constructor(
     }
 
     /**
-     * Ambil katalog yang diperbarui di server setelah [sinceServerMillis] (delta sync).
-     * Bila 0, tarik seluruh katalog (sinkron awal).
+     * Ambil katalog yang diperbarui di server setelah [sinceServerMillis] (delta sync),
+     * lalu saring ke [idProyek] agar hanya barang di proyek si mandor yang di-upsert lokal.
+     * Bila [sinceServerMillis] = 0, tarik seluruh katalog (sinkron awal).
+     *
+     * Penyaringan proyek dilakukan di sisi klien (bukan `whereEqualTo`) supaya query cukup
+     * memakai indeks satu-field pada `server_timestamp` — tanpa indeks komposit di Firestore.
+     * Kursor delta tetap maju ke server_timestamp terbesar yang DILIHAT (termasuk proyek lain)
+     * agar dokumen yang sama tidak ditarik ulang.
      */
-    suspend fun pullKatalog(sinceServerMillis: Long): PullResult {
+    suspend fun pullKatalog(sinceServerMillis: Long, idProyek: String): PullResult {
         val collection = firestore.collection(Constants.COLLECTION_KATALOG)
         val query = if (sinceServerMillis > 0L) {
             collection.whereGreaterThan("server_timestamp", Timestamp(Date(sinceServerMillis)))
@@ -64,11 +93,12 @@ class FirestoreDataSource @Inject constructor(
         val snapshot = query.get().await()
 
         var latest = sinceServerMillis
-        val items = snapshot.documents.mapNotNull { doc ->
-            val entity = doc.toKatalogEntity() ?: return@mapNotNull null
+        val items = mutableListOf<MasterKatalogEntity>()
+        snapshot.documents.forEach { doc ->
             val serverMillis = doc.getTimestamp("server_timestamp")?.toDate()?.time ?: 0L
             if (serverMillis > latest) latest = serverMillis
-            entity
+            val entity = doc.toKatalogEntity() ?: return@forEach
+            if (idProyek.isBlank() || entity.id_proyek == idProyek) items.add(entity)
         }
         return PullResult(items, latest)
     }
@@ -80,6 +110,7 @@ class FirestoreDataSource @Inject constructor(
         "satuan" to satuan,
         "stok_lokal" to stok_lokal,
         "stok_minimum" to stok_minimum,
+        "id_proyek" to id_proyek,
         "local_timestamp" to local_timestamp,
         "sync_status" to "SYNCED",
         "server_timestamp" to FieldValue.serverTimestamp(),
@@ -125,6 +156,7 @@ class FirestoreDataSource @Inject constructor(
             satuan = getString("satuan") ?: "",
             stok_lokal = (getLong("stok_lokal") ?: 0L).toInt(),
             stok_minimum = (getLong("stok_minimum") ?: 0L).toInt(),
+            id_proyek = getString("id_proyek") ?: "",
             sync_status = "SYNCED",
             local_timestamp = getLong("local_timestamp") ?: System.currentTimeMillis()
         )

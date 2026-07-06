@@ -5,9 +5,11 @@ object Constants {
     const val SYNC_WORK_TAG = "delta_sync_work"
     const val SYNC_INTERVAL_MINUTES = 15L
 
-    // Proyek default untuk sesi mandor (auto-fill id_proyek pada LogMutasi).
-    // Sesi login saat ini belum menyimpan proyek aktif, jadi mutasi diikat ke proyek ini.
+    // Fallback proyek bila sesi belum punya proyek (mis. dokumen users/{uid} belum
+    // di-provision oleh admin/website). Proyek aktif yang sebenarnya disimpan di UserSession
+    // (id_proyek/nama_proyek) dan mengikat katalog + mutasi ke proyek si mandor.
     const val DEFAULT_PROYEK = "PROYEK-UTAMA"
+    const val DEFAULT_NAMA_PROYEK = "Proyek Belum Ditetapkan"
 
     // Firestore collections
     const val COLLECTION_USERS = "users"

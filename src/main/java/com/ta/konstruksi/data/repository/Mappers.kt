@@ -32,6 +32,7 @@ internal fun MasterKatalogEntity.toDomain() = MasterKatalog(
     satuan = satuan,
     stok_lokal = stok_lokal,
     stok_minimum = stok_minimum,
+    id_proyek = id_proyek,
     sync_status = parseSyncStatus(sync_status),
     local_timestamp = local_timestamp
 )
@@ -43,6 +44,7 @@ internal fun MasterKatalog.toEntity() = MasterKatalogEntity(
     satuan = satuan,
     stok_lokal = stok_lokal,
     stok_minimum = stok_minimum,
+    id_proyek = id_proyek,
     sync_status = sync_status.name,
     local_timestamp = local_timestamp
 )

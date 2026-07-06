@@ -53,7 +53,7 @@ import com.ta.konstruksi.domain.model.LogMutasi
 import com.ta.konstruksi.domain.model.TransferProyek
 import com.ta.konstruksi.presentation.navigation.Screen
 import com.ta.konstruksi.presentation.ui.component.AppBottomBar
-import com.ta.konstruksi.presentation.ui.component.AppLoading
+import com.ta.konstruksi.presentation.ui.component.ListSkeleton
 import com.ta.konstruksi.presentation.ui.component.SyncStatusBadge
 import com.ta.konstruksi.presentation.ui.theme.AmberBg
 import com.ta.konstruksi.presentation.ui.theme.AmberBorder
@@ -164,7 +164,7 @@ fun RiwayatScreen(
             }
 
             if (isLoading) {
-                AppLoading(modifier = Modifier.weight(1f).fillMaxWidth())
+                ListSkeleton(modifier = Modifier.weight(1f).fillMaxWidth(), rows = 7)
             } else if (filtered.isEmpty()) {
                 // Beri ruang navbar (118dp) agar konten benar-benar terpusat di area terlihat
                 Box(

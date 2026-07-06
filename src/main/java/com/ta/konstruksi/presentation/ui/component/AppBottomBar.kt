@@ -147,6 +147,16 @@ private fun BarTab(
 /** Pindah tab dengan perilaku tab yang benar: satu instance, simpan & pulihkan state. */
 private fun NavController.switchTab(route: String) {
     if (currentDestination?.route == route) return
+
+    // Beranda = start destination. Menuju ke sini lewat pola navigate() biasa menabrakkan kunci
+    // saveState/restoreState (target popUpTo == tujuan navigate), sehingga tab yang barusan
+    // disimpan justru dipulihkan kembali → seolah tombol tak berfungsi. Cukup pop ke Beranda
+    // yang selalu berada di akar back stack.
+    if (route == Screen.Dashboard.route) {
+        popBackStack(Screen.Dashboard.route, inclusive = false)
+        return
+    }
+
     navigate(route) {
         popUpTo(Screen.Dashboard.route) { saveState = true }
         launchSingleTop = true
