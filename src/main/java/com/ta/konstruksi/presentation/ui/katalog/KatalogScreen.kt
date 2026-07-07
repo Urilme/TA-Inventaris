@@ -23,7 +23,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Inventory
-import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -70,7 +69,7 @@ fun KatalogScreen(
 
     val filtered = katalogList.filter {
         searchQuery.isBlank() || it.nama_barang.contains(searchQuery, true) ||
-                it.sku_id.contains(searchQuery, true) || it.kategori.contains(searchQuery, true)
+                it.kategori.contains(searchQuery, true)
     }
 
     Box(modifier = Modifier.fillMaxSize().background(AppBackground)) {
@@ -97,7 +96,7 @@ fun KatalogScreen(
                         modifier = Modifier.weight(1f),
                         textStyle = androidx.compose.ui.text.TextStyle(fontSize = 15.sp, color = Navy),
                         decorationBox = { inner ->
-                            if (searchQuery.isEmpty()) Text("Cari nama, SKU, kategori…", fontSize = 15.sp, color = TextSubtle)
+                            if (searchQuery.isEmpty()) Text("Cari nama atau kategori…", fontSize = 15.sp, color = TextSubtle)
                             inner()
                         }
                     )
@@ -176,12 +175,6 @@ private fun KatalogItemCard(item: MasterKatalog, onClick: () -> Unit) {
         Column(Modifier.weight(1f)) {
             Text(item.nama_barang, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Navy)
             Text(KategoriBarang.label(item.kategori), fontSize = 12.sp, color = TextSubtle)
-            Spacer(Modifier.height(4.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.QrCode, null, tint = TextSubtle, modifier = Modifier.size(13.dp))
-                Spacer(Modifier.width(4.dp))
-                Text(item.sku_id, fontSize = 11.sp, color = TextSubtle, fontWeight = FontWeight.Medium)
-            }
         }
         Column(horizontalAlignment = Alignment.End) {
             Text(

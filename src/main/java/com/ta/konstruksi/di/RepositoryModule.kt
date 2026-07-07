@@ -15,5 +15,6 @@ abstract class RepositoryModule {
     @Binds @Singleton abstract fun bindKatalogRepository(impl: KatalogRepositoryImpl): KatalogRepository
     @Binds @Singleton abstract fun bindMutasiRepository(impl: MutasiRepositoryImpl): MutasiRepository
     @Binds @Singleton abstract fun bindTransferRepository(impl: TransferRepositoryImpl): TransferRepository
+    @Binds @Singleton abstract fun bindProyekRepository(impl: ProyekRepositoryImpl): ProyekRepository
     @Binds @Singleton abstract fun bindSyncRepository(impl: SyncRepositoryImpl): SyncRepository
 }

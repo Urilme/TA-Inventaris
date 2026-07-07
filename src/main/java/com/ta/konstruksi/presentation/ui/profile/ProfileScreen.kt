@@ -22,13 +22,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.filled.Badge
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Sync
-import androidx.compose.material.icons.filled.Tag
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -139,11 +137,6 @@ fun ProfileScreen(
                         label = "Nama proyek",
                         value = session?.nama_proyek?.takeIf { it.isNotBlank() } ?: "Belum ditetapkan"
                     )
-                    InfoRow(
-                        icon = Icons.Default.Tag,
-                        label = "ID proyek",
-                        value = session?.id_proyek?.takeIf { it.isNotBlank() } ?: "-"
-                    )
                     Text(
                         "Penugasan proyek dikelola oleh admin.",
                         fontSize = 11.sp, color = TextSubtle,
@@ -155,7 +148,6 @@ fun ProfileScreen(
 
                 InfoCard(title = "Akun") {
                     InfoRow(icon = Icons.Default.Email, label = "Email", value = session?.email ?: "-")
-                    InfoRow(icon = Icons.Default.Badge, label = "ID mandor", value = session?.id_mandor ?: "-")
                 }
 
                 Spacer(Modifier.height(14.dp))

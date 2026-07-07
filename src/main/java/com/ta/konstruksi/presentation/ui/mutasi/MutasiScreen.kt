@@ -95,6 +95,7 @@ import com.ta.konstruksi.util.KondisiBarang
 fun MutasiScreen(
     onBack: () -> Unit,
     isOnline: Boolean = false,
+    initialJenis: JenisMutasi = JenisMutasi.CHECK_IN,
     mutasiViewModel: MutasiViewModel = hiltViewModel(),
     katalogViewModel: KatalogViewModel = hiltViewModel()
 ) {
@@ -102,7 +103,7 @@ fun MutasiScreen(
     val katalogList by katalogViewModel.katalogList.collectAsStateWithLifecycle()
     val session by mutasiViewModel.session.collectAsStateWithLifecycle()
 
-    var jenis by remember { mutableStateOf(JenisMutasi.CHECK_IN) }
+    var jenis by remember { mutableStateOf(initialJenis) }
     val kategoriList = remember(katalogList) { katalogList.map { it.kategori }.distinct().sorted() }
     var selectedKategori by remember { mutableStateOf("") }
     var selectedItem by remember { mutableStateOf<MasterKatalog?>(null) }
@@ -313,22 +314,26 @@ fun MutasiScreen(
                     Spacer(Modifier.height(18.dp))
                 }
 
-                // Lokasi Penggunaan (wajib)
-                FormLabel("Lokasi Penggunaan")
-                Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = lokasiPenggunaan, onValueChange = { lokasiPenggunaan = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Navy, unfocusedBorderColor = BorderInput,
-                        focusedContainerColor = Color.White, unfocusedContainerColor = Color.White
-                    ),
-                    placeholder = { Text("mis. Lantai 3 - Area Cor", color = TextSubtle) }
-                )
+                // Lokasi Penggunaan — hanya relevan untuk Barang Keluar (CHECK_OUT).
+                // Barang Masuk masuk ke stok gudang proyek, belum dipakai di area mana pun,
+                // sehingga lokasi penggunaan tidak berlaku dan field disembunyikan.
+                if (jenis == JenisMutasi.CHECK_OUT) {
+                    FormLabel("Lokasi Penggunaan")
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = lokasiPenggunaan, onValueChange = { lokasiPenggunaan = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Navy, unfocusedBorderColor = BorderInput,
+                            focusedContainerColor = Color.White, unfocusedContainerColor = Color.White
+                        ),
+                        placeholder = { Text("mis. Lantai 3 - Area Cor", color = TextSubtle) }
+                    )
 
-                Spacer(Modifier.height(18.dp))
+                    Spacer(Modifier.height(18.dp))
+                }
 
                 // Penanggung Jawab (wajib) — read-only default, bisa diubah
                 FormLabel("Penanggung Jawab")
@@ -407,8 +412,10 @@ fun MutasiScreen(
                 // SIMPAN button
                 val isOverStock = jenis == JenisMutasi.CHECK_OUT &&
                     (selectedItem?.let { jumlah > it.stok_lokal } ?: false)
+                // Lokasi hanya wajib untuk Barang Keluar; Barang Masuk tidak memerlukannya.
+                val lokasiValid = jenis == JenisMutasi.CHECK_IN || lokasiPenggunaan.isNotBlank()
                 val canSave = selectedItem != null && jumlah > 0 && !isOverStock &&
-                    lokasiPenggunaan.isNotBlank() && penanggungjawab.isNotBlank() &&
+                    lokasiValid && penanggungjawab.isNotBlank() &&
                     uiState !is MutasiUiState.Loading
                 val isSaving = uiState is MutasiUiState.Loading
                 Box(
@@ -452,7 +459,7 @@ fun MutasiScreen(
             item = itemToConfirm,
             jumlah = jumlah,
             kondisi = if (isAlat) kondisi else null,
-            lokasi = lokasiPenggunaan,
+            lokasi = if (jenis == JenisMutasi.CHECK_OUT) lokasiPenggunaan else "",
             penanggungjawab = penanggungjawab,
             onDismiss = { showConfirm = false },
             onConfirm = {
@@ -462,7 +469,7 @@ fun MutasiScreen(
                     jenis = jenis,
                     jumlah = jumlah,
                     kondisi = if (isAlat) kondisi else null,
-                    lokasiPenggunaan = lokasiPenggunaan,
+                    lokasiPenggunaan = if (jenis == JenisMutasi.CHECK_OUT) lokasiPenggunaan else "",
                     penanggungjawab = penanggungjawab,
                     catatan = catatan.ifBlank { null }
                 )
@@ -563,7 +570,7 @@ private fun MutasiConfirmDialog(
 
             // Detail berikon
             if (kondisi != null) ConfirmDetailRow(Icons.Default.Check, "Kondisi", kondisi.label())
-            ConfirmDetailRow(Icons.Default.Place, "Lokasi", lokasi)
+            if (lokasi.isNotBlank()) ConfirmDetailRow(Icons.Default.Place, "Lokasi", lokasi)
             ConfirmDetailRow(Icons.Default.Person, "Penanggung Jawab", penanggungjawab)
 
             Spacer(Modifier.height(14.dp))
@@ -661,7 +668,7 @@ private fun MutasiSuccessDialog(onDone: () -> Unit) {
             Text("Data Tersimpan", fontSize = 19.sp, fontWeight = FontWeight.Black, color = Navy)
             Spacer(Modifier.height(8.dp))
             Text(
-                "Mutasi tersimpan secara luring dan akan disinkronkan otomatis saat daring.",
+                "Mutasi tersimpan secara offline dan akan disinkronkan otomatis saat online.",
                 fontSize = 13.sp, color = TextSubtle, textAlign = TextAlign.Center, lineHeight = 19.sp
             )
             Spacer(Modifier.height(22.dp))
@@ -685,7 +692,7 @@ private fun BarangPickerDialog(
     var query by remember { mutableStateOf("") }
     val shown = items.filter {
         query.isBlank() || it.nama_barang.contains(query, true) ||
-            it.sku_id.contains(query, true) || it.kategori.contains(query, true)
+            it.kategori.contains(query, true)
     }
     Dialog(onDismissRequest = onDismiss) {
         Column(
@@ -729,7 +736,7 @@ private fun BarangPickerDialog(
                     modifier = Modifier.weight(1f), singleLine = true,
                     textStyle = androidx.compose.ui.text.TextStyle(fontSize = 15.sp, color = Navy),
                     decorationBox = { inner ->
-                        if (query.isEmpty()) Text("Cari nama, SKU, kategori…", fontSize = 15.sp, color = TextSubtle)
+                        if (query.isEmpty()) Text("Cari nama atau kategori…", fontSize = 15.sp, color = TextSubtle)
                         inner()
                     }
                 )

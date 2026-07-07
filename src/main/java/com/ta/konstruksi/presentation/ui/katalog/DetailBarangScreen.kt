@@ -24,7 +24,6 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.Inventory
-import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -125,12 +124,6 @@ fun DetailBarangScreen(
                                     Text(KategoriBarang.label(item.kategori), fontSize = 12.sp, color = TextSubtle)
                                 }
                                 SyncStatusBadge(status = item.sync_status)
-                            }
-                            Spacer(Modifier.height(14.dp))
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.QrCode, contentDescription = null, tint = TextSubtle, modifier = Modifier.size(15.dp))
-                                Spacer(Modifier.width(6.dp))
-                                Text(item.sku_id, fontSize = 12.sp, color = TextSubtle, fontWeight = FontWeight.Medium)
                             }
                             Spacer(Modifier.height(14.dp))
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {

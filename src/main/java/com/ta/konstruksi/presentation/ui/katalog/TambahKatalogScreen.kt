@@ -23,7 +23,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AddBox
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Inventory
-import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -237,15 +236,6 @@ fun TambahKatalogScreen(
                         Spacer(Modifier.width(10.dp))
                         Text("Stok awal diinisialisasi ", fontSize = 13.sp, color = TextPrimary)
                         Text("0 ${satuan.ifEmpty { "unit" }}", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Navy)
-                    }
-                    Spacer(Modifier.height(10.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.QrCode, null, tint = Navy, modifier = Modifier.size(20.dp))
-                        Spacer(Modifier.width(10.dp))
-                        Text("SKU: ", fontSize = 13.sp, color = TextPrimary)
-                        Text(generatedSku, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Navy)
-                        Spacer(Modifier.width(6.dp))
-                        Text("(otomatis)", fontSize = 13.sp, color = TextSubtle)
                     }
                 }
 

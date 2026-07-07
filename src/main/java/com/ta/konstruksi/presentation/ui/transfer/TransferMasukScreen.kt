@@ -30,6 +30,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -51,6 +52,7 @@ import com.ta.konstruksi.presentation.ui.theme.AppBackground
 import com.ta.konstruksi.presentation.ui.theme.BorderLight
 import com.ta.konstruksi.presentation.ui.theme.Navy
 import com.ta.konstruksi.presentation.ui.theme.TextSubtle
+import com.ta.konstruksi.presentation.viewmodel.KatalogViewModel
 import com.ta.konstruksi.presentation.viewmodel.TransferViewModel
 import com.ta.konstruksi.util.StatusTransfer
 import java.text.SimpleDateFormat
@@ -60,12 +62,21 @@ import java.util.Locale
 @Composable
 fun TransferMasukScreen(
     navController: NavController,
-    proyekTujuan: String = "Proyek Aktif",
     isOnline: Boolean = false,
-    viewModel: TransferViewModel = hiltViewModel()
+    viewModel: TransferViewModel = hiltViewModel(),
+    katalogViewModel: KatalogViewModel = hiltViewModel()
 ) {
     val transferList by viewModel.transferList.collectAsStateWithLifecycle()
-    val incomingTransfers = transferList.filter { it.status_transfer == StatusTransfer.IN_TRANSIT }
+    val katalogList by katalogViewModel.katalogList.collectAsStateWithLifecycle()
+    val session by viewModel.session.collectAsStateWithLifecycle()
+    val namaBySku = remember(katalogList) { katalogList.associate { it.sku_id to it.nama_barang } }
+    // Hanya transfer IN_TRANSIT yang tujuannya = proyek aktif mandor (transfer masuk ke proyek ini).
+    // proyek_tujuan dicocokkan dengan nama_proyek sesi (case-insensitive) karena diketik manual pengirim.
+    val proyekAktif = session?.nama_proyek?.takeIf { it.isNotBlank() }
+    val incomingTransfers = transferList.filter {
+        it.status_transfer == StatusTransfer.IN_TRANSIT &&
+            proyekAktif != null && it.proyek_tujuan.trim().equals(proyekAktif, ignoreCase = true)
+    }
 
     Box(modifier = Modifier.fillMaxSize().background(AppBackground)) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -128,6 +139,7 @@ fun TransferMasukScreen(
                     items(incomingTransfers) { transfer ->
                         TransferMasukCard(
                             transfer = transfer,
+                            namaBarang = namaBySku[transfer.sku_id] ?: "Barang tidak dikenal",
                             onClick = { navController.navigate(Screen.TransferDetail.createRoute(transfer.id_transfer)) }
                         )
                     }
@@ -160,7 +172,7 @@ fun TransferMasukScreen(
 }
 
 @Composable
-private fun TransferMasukCard(transfer: TransferProyek, onClick: () -> Unit) {
+private fun TransferMasukCard(transfer: TransferProyek, namaBarang: String, onClick: () -> Unit) {
     val dateStr = SimpleDateFormat("HH:mm", Locale("id")).format(Date(transfer.local_timestamp))
 
     Row(
@@ -177,7 +189,7 @@ private fun TransferMasukCard(transfer: TransferProyek, onClick: () -> Unit) {
         }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
-            Text(transfer.sku_id, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Navy)
+            Text(namaBarang, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Navy)
             Text("${transfer.jumlah} unit · Dari ${transfer.proyek_asal}", fontSize = 12.sp, color = TextSubtle)
             Spacer(Modifier.height(8.dp))
             Row(

@@ -6,6 +6,7 @@ import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.ta.konstruksi.data.local.entity.LogMutasiEntity
 import com.ta.konstruksi.data.local.entity.MasterKatalogEntity
+import com.ta.konstruksi.data.local.entity.ProyekEntity
 import com.ta.konstruksi.data.local.entity.TransferProyekEntity
 import com.ta.konstruksi.util.Constants
 import kotlinx.coroutines.tasks.await
@@ -101,6 +102,22 @@ class FirestoreDataSource @Inject constructor(
             if (idProyek.isBlank() || entity.id_proyek == idProyek) items.add(entity)
         }
         return PullResult(items, latest)
+    }
+
+    /**
+     * Ambil seluruh registry proyek dari koleksi `proyek`. Koleksi ini kecil dan read-only
+     * (dikelola website admin), jadi ditarik penuh tiap sync — tidak perlu kursor delta.
+     */
+    suspend fun pullProyek(): List<ProyekEntity> {
+        val snapshot = firestore.collection(Constants.COLLECTION_PROYEK).get().await()
+        return snapshot.documents.mapNotNull { it.toProyekEntity() }
+    }
+
+    private fun DocumentSnapshot.toProyekEntity(): ProyekEntity? {
+        val nama = getString("nama_proyek") ?: return null
+        // id_proyek diambil dari field; fallback ke id dokumen bila field tidak diisi
+        val idProyek = getString("id_proyek") ?: id
+        return ProyekEntity(id_proyek = idProyek, nama_proyek = nama)
     }
 
     private fun MasterKatalogEntity.toMap(updatedBy: String): Map<String, Any?> = mapOf(

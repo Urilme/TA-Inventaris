@@ -31,8 +31,8 @@ sealed class RiwayatItem {
         is Transfer -> data.sync_status
     }
     val label: String get() = when (this) {
-        is Mutasi -> namaBarang.ifBlank { data.sku_id }
-        is Transfer -> namaBarang.ifBlank { data.sku_id }
+        is Mutasi -> namaBarang.ifBlank { "Barang tidak dikenal" }
+        is Transfer -> namaBarang.ifBlank { "Barang tidak dikenal" }
     }
 }
 
@@ -60,8 +60,8 @@ class RiwayatViewModel @Inject constructor(
         // Peta SKU -> nama barang agar riwayat menampilkan nama, bukan UUID
         val namaBySku = katalogList.associate { it.sku_id to it.nama_barang }
         val items = mutableListOf<RiwayatItem>()
-        mutasiList.forEach { items.add(RiwayatItem.Mutasi(it, namaBySku[it.sku_id] ?: it.sku_id)) }
-        transferList.forEach { items.add(RiwayatItem.Transfer(it, namaBySku[it.sku_id] ?: it.sku_id)) }
+        mutasiList.forEach { items.add(RiwayatItem.Mutasi(it, namaBySku[it.sku_id].orEmpty())) }
+        transferList.forEach { items.add(RiwayatItem.Transfer(it, namaBySku[it.sku_id].orEmpty())) }
         val sorted = items.sortedByDescending { it.timestamp }
         if (filter != null) sorted.filter { it.syncStatus == filter } else sorted
     }.onEach { _initialLoaded.value = true }

@@ -116,7 +116,7 @@ fun RiwayatScreen(
                     ) {
                         Spacer(Modifier.size(8.dp).clip(CircleShape).background(if (isOnline) GreenMain else AmberMain))
                         Spacer(Modifier.width(7.dp))
-                        Text(if (isOnline) "DARING" else "LURING", fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, color = Color.White)
+                        Text(if (isOnline) "ONLINE" else "OFFLINE", fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, color = Color.White)
                     }
                 }
                 Spacer(Modifier.height(12.dp))

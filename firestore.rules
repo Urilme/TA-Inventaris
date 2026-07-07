@@ -23,6 +23,10 @@ service cloud.firestore {
     match /users/{doc} {
       allow read, write: if true;
     }
+    // Registry proyek — app hanya membaca; tulis dilakukan website admin (di sini dibuka untuk seeding uji)
+    match /proyek/{doc} {
+      allow read, write: if true;
+    }
 
     // Koleksi lain tetap tertutup secara default (tidak ada match = ditolak)
   }

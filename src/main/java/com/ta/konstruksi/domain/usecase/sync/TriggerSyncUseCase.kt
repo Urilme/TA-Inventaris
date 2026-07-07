@@ -14,6 +14,10 @@ class TriggerSyncUseCase @Inject constructor(
         val transferResult = syncRepository.syncPendingTransfer()
         val pullResult = syncRepository.pullLatestKatalog()
 
+        // Refresh registry proyek bersifat best-effort (data pelengkap read-only). Kegagalannya
+        // (mis. offline / rules belum di-deploy) TIDAK menggagalkan sinkronisasi data inti.
+        syncRepository.pullLatestProyek()
+
         return if (katalogResult.isSuccess && mutasiResult.isSuccess &&
             transferResult.isSuccess && pullResult.isSuccess
         ) {

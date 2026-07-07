@@ -24,12 +24,14 @@ class RecordMutasiUseCase @Inject constructor(
         penanggungjawab: String,
         catatan: String? = null
     ): Result<Unit> {
-        // Field wajib (F3): lokasi_penggunaan, penanggungjawab
-        if (lokasiPenggunaan.isBlank()) {
-            return Result.failure(IllegalArgumentException("Lokasi penggunaan wajib diisi"))
-        }
+        // Field wajib (F3): penanggungjawab selalu; lokasi_penggunaan hanya untuk CHECK_OUT.
+        // Barang Masuk masuk ke stok gudang proyek (belum dipakai), sehingga lokasi tidak berlaku
+        // dan disimpan kosong.
         if (penanggungjawab.isBlank()) {
             return Result.failure(IllegalArgumentException("Penanggung jawab wajib diisi"))
+        }
+        if (jenisMutasi == JenisMutasi.CHECK_OUT && lokasiPenggunaan.isBlank()) {
+            return Result.failure(IllegalArgumentException("Lokasi penggunaan wajib diisi"))
         }
 
         val item = katalogRepository.getKatalogBySku(skuId)

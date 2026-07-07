@@ -3,8 +3,12 @@ package com.ta.konstruksi.presentation.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ta.konstruksi.domain.model.MasterKatalog
+import com.ta.konstruksi.domain.model.Proyek
 import com.ta.konstruksi.domain.model.TransferProyek
+import com.ta.konstruksi.domain.model.UserSession
+import com.ta.konstruksi.domain.repository.AuthRepository
 import com.ta.konstruksi.domain.repository.KatalogRepository
+import com.ta.konstruksi.domain.repository.ProyekRepository
 import com.ta.konstruksi.domain.repository.TransferRepository
 import com.ta.konstruksi.sync.SyncScheduler
 import com.ta.konstruksi.util.StatusTransfer
@@ -29,8 +33,23 @@ sealed interface TransferUiState {
 class TransferViewModel @Inject constructor(
     private val transferRepository: TransferRepository,
     private val katalogRepository: KatalogRepository,
+    private val proyekRepository: ProyekRepository,
+    private val authRepository: AuthRepository,
     private val syncScheduler: SyncScheduler
 ) : ViewModel() {
+
+    // Registry proyek untuk pilihan proyek tujuan (dari cache lokal, di-refresh saat sync)
+    val proyekList: StateFlow<List<Proyek>> = proyekRepository
+        .getAllProyek()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    // Sesi mandor aktif — dipakai untuk mengisi proyek_asal transfer dari proyek yang ditugaskan
+    private val _session = MutableStateFlow<UserSession?>(null)
+    val session: StateFlow<UserSession?> = _session
+
+    init {
+        viewModelScope.launch { _session.value = authRepository.getLocalSession() }
+    }
 
     val katalogList: StateFlow<List<MasterKatalog>> = katalogRepository
         .getAllKatalog()

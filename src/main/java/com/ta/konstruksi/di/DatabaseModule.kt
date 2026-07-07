@@ -102,15 +102,31 @@ object DatabaseModule {
         }
     }
 
+    /**
+     * Migrasi v4 → v5: tambah tabel `proyek` (registry proyek dari website admin, read-only).
+     * Struktur harus cocok dengan ProyekEntity agar validasi skema Room lolos.
+     */
+    val MIGRATION_4_5 = object : Migration(4, 5) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS proyek (" +
+                    "id_proyek TEXT NOT NULL, " +
+                    "nama_proyek TEXT NOT NULL, " +
+                    "PRIMARY KEY(id_proyek))"
+            )
+        }
+    }
+
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): KonstruksiDatabase =
         Room.databaseBuilder(context, KonstruksiDatabase::class.java, Constants.DATABASE_NAME)
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
             .build()
 
     @Provides fun provideUserSessionDao(db: KonstruksiDatabase): UserSessionDao = db.userSessionDao()
     @Provides fun provideMasterKatalogDao(db: KonstruksiDatabase): MasterKatalogDao = db.masterKatalogDao()
     @Provides fun provideLogMutasiDao(db: KonstruksiDatabase): LogMutasiDao = db.logMutasiDao()
     @Provides fun provideTransferProyekDao(db: KonstruksiDatabase): TransferProyekDao = db.transferProyekDao()
+    @Provides fun provideProyekDao(db: KonstruksiDatabase): ProyekDao = db.proyekDao()
 }

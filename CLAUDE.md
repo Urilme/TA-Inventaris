@@ -107,9 +107,19 @@ data class MasterKatalog(
 > Gunakan konstanta di `Constants.kt` agar tidak ada typo:
 > ```kotlin
 > object KategoriBarang {
->     const val ALAT = "alat"
->     const val BAHAN = "bahan"
+>     const val ALAT        = "alat"
+>     const val BAHAN       = "bahan"
 >     const val SCAFFOLDING = "scaffolding"
+>
+>     val ALL = listOf(ALAT, BAHAN, SCAFFOLDING)
+>
+>     /** Label tampilan untuk dropdown UI. */
+>     fun label(value: String): String = when (value) {
+>         ALAT        -> "Alat"
+>         BAHAN       -> "Bahan"
+>         SCAFFOLDING -> "Scaffolding"
+>         else        -> value.replaceFirstChar { it.uppercase() }
+>     }
 > }
 > ```
 
@@ -192,10 +202,11 @@ Urutan berdasarkan **Plan by Feature (FDD)** — implementasi dari pondasi ke at
 - **File utama**: `MutasiViewModel`, `MutasiRepository`, `MutasiScreen`
 
 ### F4 — Transfer Aset Antar Proyek ⭐ PRIORITAS 2
-- Form transfer dengan `proyek_asal` dan `proyek_tujuan`
-- Status awal: `IN_TRANSIT`
-- Konfirmasi penerimaan → status jadi `SELESAI`
-- **File utama**: `TransferViewModel`, `TransferRepository`, `TransferScreen`
+- Form transfer dengan `proyek_asal` dan `proyek_tujuan` — status awal `IN_TRANSIT`
+- Sisi pengirim: `TransferScreen` — form buat transfer, stok proyek asal berkurang
+- Sisi penerima: `TransferMasukScreen` — daftar transfer IN_TRANSIT yang masuk ke proyek aktif
+- Konfirmasi penerimaan: `TransferDetailScreen` — detail + tombol "Konfirmasi Terima" → status jadi `SELESAI`, stok proyek tujuan bertambah
+- **File utama**: `TransferViewModel`, `TransferRepository`, `TransferScreen`, `TransferMasukScreen`, `TransferDetailScreen`
 
 ### F5 — Riwayat Transaksi & Status Sinkronisasi ⭐ PRIORITAS 2
 - List semua `LogMutasi` dan `TransferProyek` dari Room
@@ -299,7 +310,11 @@ com.ta.konstruksi/
 │   │   ├── mutasi/
 │   │   │   └── MutasiScreen.kt
 │   │   ├── transfer/
-│   │   │   └── TransferScreen.kt
+│   │   │   ├── TransferScreen.kt         ← form kirim aset (buat transfer baru)
+│   │   │   ├── TransferMasukScreen.kt    ← daftar transfer IN_TRANSIT masuk ke proyek ini
+│   │   │   └── TransferDetailScreen.kt   ← detail + konfirmasi penerimaan (→ SELESAI)
+│   │   ├── profile/
+│   │   │   └── ProfileScreen.kt          ← identitas mandor, proyek aktif, last sync, logout
 │   │   ├── riwayat/
 │   │   │   └── RiwayatScreen.kt
 │   │   └── component/
@@ -391,8 +406,13 @@ firestore/
 ├── users/{id_mandor}             ← UserSession document
 ├── katalog/{sku_id}              ← MasterKatalog document
 ├── mutasi/{id_transaksi}         ← LogMutasi document
-└── transfer/{id_transfer}        ← TransferProyek document
+├── transfer/{id_transfer}        ← TransferProyek document
+└── proyek/{id_proyek}            ← registry proyek { id_proyek, nama_proyek } (read-only dari app)
 ```
+
+> **Koleksi `proyek`** adalah registry proyek yang dikelola **website admin** (di luar app mobile).
+> App hanya **membaca**-nya (di-cache ke Room tabel `proyek`, di-refresh tiap sync) untuk mengisi
+> pilihan **proyek tujuan** di Transfer — agar nama proyek konsisten & bebas typo (dipilih, bukan diketik).
 
 Setiap document di Firestore memiliki field tambahan:
 - `server_timestamp`: `FieldValue.serverTimestamp()`
@@ -430,3 +450,38 @@ Saat memulai implementasi, ikuti urutan ini:
 9. **Implementasi F6** (Sync Worker) — integrasi semua layer
 
 Lihat `IMPLEMENTATION_GUIDE.md` untuk checklist detail per fitur.
+
+---
+
+## Gap Analysis: Proposal vs Implementasi
+
+> Hasil analisis per Juli 2026 — gap yang ditemukan antara proposal penelitian (LaTeX) dan
+> kode Android yang sudah diimplementasi. Perlu diselesaikan sebelum sidang.
+
+### ✅ Sesuai (kode = proposal)
+| Item | Keterangan |
+|---|---|
+| `LogMutasiEntity` | Semua atribut baru ada: `id_mandor`, `id_proyek`, `kondisi_barang` (nullable), `lokasi_penggunaan`, `penanggungjawab` |
+| `KategoriBarang` | Ada di `Constants.kt` dengan `ALL` list dan `label()` helper |
+| `KondisiBarang` enum | Ada di `SyncStatus.kt` |
+| `RecordMutasiUseCase` | Validasi kategori sudah ada: kondisi wajib untuk alat, null untuk bahan/scaffolding |
+| `MutasiScreen` | Dropdown kondisi hanya muncul saat `isAlat == true`; penanggungjawab auto-fill dari sesi |
+| `UserSessionEntity` | Punya `id_proyek` dan `nama_proyek` (MIGRATION_3_4) |
+| `MasterKatalogEntity` | Punya `stok_minimum` (MIGRATION_2_3) dan `id_proyek` (MIGRATION_3_4) |
+| Room DB | Versi 4, semua migrasi terdokumentasi |
+
+### ❌ Gap — Implementasi lebih lengkap dari proposal
+| Gap | Detail | Tindakan di Proposal |
+|---|---|---|
+| **F4 punya 3 screen, proposal hanya 1 wireframe** | Android punya `TransferScreen` (kirim), `TransferMasukScreen` (daftar masuk), `TransferDetailScreen` (konfirmasi). Proposal hanya punya `wireframe_transfer.png` yang mencakup sisi pengirim saja | Tambah 2 wireframe baru dan update teks sub-poin e) untuk menjelaskan alur 2 sisi |
+| **`id_proyek` & `nama_proyek` di `UserSession`** | Diimplementasi (MIGRATION_3_4) tapi LaTeX CLAUDE.md masih versi lama yang tidak punya field ini | Update skema `UserSession` di LaTeX CLAUDE.md dan proposal ERD |
+| **`id_proyek` di `MasterKatalog`** | Diimplementasi (MIGRATION_3_4) tapi LaTeX CLAUDE.md tidak mencantumkannya | Update skema `MasterKatalog` di LaTeX CLAUDE.md dan proposal ERD |
+| **`ProfileScreen`** | Diimplementasi sebagai deviasi desain (menggantikan tombol logout di header) tapi tidak ada di proposal | Boleh dicatat sebagai deviasi desain di Bab IV/V |
+
+### ❌ Gap — Proposal menyebut tapi tidak diimplementasi
+| Gap | Detail |
+|---|---|
+| **Enum `status_transfer` di proposal pakai `PENDING_TRANSFER`** | Teks proposal sub-poin e) menyebut `status_transfer = PENDING_TRANSFER` tapi enum aktual adalah `IN_TRANSIT`. Perlu koreksi di proposal. |
+
+### 📋 Deviasi Desain yang Disengaja (bukan bug, bukan gap)
+Lihat bagian "Deviasi desain" di `IMPLEMENTATION_GUIDE.md` untuk daftar lengkap.

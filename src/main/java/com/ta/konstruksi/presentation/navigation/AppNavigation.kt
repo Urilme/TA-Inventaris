@@ -46,7 +46,12 @@ sealed class Screen(val route: String) {
     object DetailBarang : Screen("detail_barang/{skuId}") {
         fun createRoute(skuId: String) = "detail_barang/$skuId"
     }
-    object Mutasi : Screen("mutasi")
+    object Mutasi : Screen("mutasi?jenis={jenis}") {
+        const val ARG_JENIS = "jenis"
+        /** Buka form Mutasi; [jenis] mem-preset toggle Masuk/Keluar (null = default Masuk). */
+        fun createRoute(jenis: com.ta.konstruksi.util.JenisMutasi? = null) =
+            if (jenis == null) "mutasi" else "mutasi?jenis=${jenis.name}"
+    }
     object Transfer : Screen("transfer")
     object TransferMasuk : Screen("transfer_masuk")
     object TransferDetail : Screen("transfer_detail/{transferId}") {
@@ -111,10 +116,21 @@ fun AppNavigation(authViewModel: AuthViewModel = hiltViewModel()) {
             )
         }
 
-        composable(Screen.Mutasi.route) {
+        composable(
+            route = Screen.Mutasi.route,
+            arguments = listOf(navArgument(Screen.Mutasi.ARG_JENIS) {
+                type = NavType.StringType
+                defaultValue = com.ta.konstruksi.util.JenisMutasi.CHECK_IN.name
+            })
+        ) { backStackEntry ->
+            val jenisArg = backStackEntry.arguments?.getString(Screen.Mutasi.ARG_JENIS)
+            val initialJenis = runCatching {
+                com.ta.konstruksi.util.JenisMutasi.valueOf(jenisArg ?: "")
+            }.getOrDefault(com.ta.konstruksi.util.JenisMutasi.CHECK_IN)
             MutasiScreen(
                 onBack = { navController.popBackStack() },
-                isOnline = isOnline
+                isOnline = isOnline,
+                initialJenis = initialJenis
             )
         }
 

@@ -2,6 +2,7 @@ package com.ta.konstruksi.data.repository
 
 import com.ta.konstruksi.data.local.dao.LogMutasiDao
 import com.ta.konstruksi.data.local.dao.MasterKatalogDao
+import com.ta.konstruksi.data.local.dao.ProyekDao
 import com.ta.konstruksi.data.local.dao.TransferProyekDao
 import com.ta.konstruksi.data.local.dao.UserSessionDao
 import com.ta.konstruksi.data.remote.FirestoreDataSource
@@ -13,6 +14,7 @@ class SyncRepositoryImpl @Inject constructor(
     private val mutasiDao: LogMutasiDao,
     private val transferDao: TransferProyekDao,
     private val katalogDao: MasterKatalogDao,
+    private val proyekDao: ProyekDao,
     private val userSessionDao: UserSessionDao,
     private val firestore: FirestoreDataSource
 ) : SyncRepository {
@@ -88,6 +90,13 @@ class SyncRepositoryImpl @Inject constructor(
         if (result.latestServerMillis > since) {
             updateLastSyncTimestamp(result.latestServerMillis)
         }
+    }
+
+    override suspend fun pullLatestProyek(): Result<Unit> = runCatching {
+        // Registry proyek ditarik penuh (koleksi kecil, read-only). Hanya ganti cache bila
+        // server mengembalikan data — agar daftar proyek tak terhapus saat kegagalan/aturan kosong.
+        val proyek = firestore.pullProyek()
+        if (proyek.isNotEmpty()) proyekDao.replaceAll(proyek)
     }
 
     override suspend fun getLastSyncTimestamp(): Long =

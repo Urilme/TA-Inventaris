@@ -65,14 +65,26 @@ terpisah**. Aplikasi mobile hanya **membaca** penugasan tersebut, tidak mengubah
 - [x] `MasterKatalogDao.getAllKatalog(idProyek)` + `KatalogRepositoryImpl` menyaring ke proyek aktif
       dan **menstempel** `id_proyek` pada barang baru
 - [x] `MutasiViewModel`: `id_proyek` diambil dari sesi (bukan `Constants.DEFAULT_PROYEK`)
+- [x] `TransferViewModel` + `TransferScreen`: `proyek_asal` diambil dari sesi (`nama_proyek`), bukan
+      placeholder statis "Proyek Aktif"; `proyek_tujuan` **dipilih dari registry proyek** (dropdown,
+      bukan diketik) sehingga bebas typo dan konsisten dengan nama proyek penerima
+- [x] **Registry proyek** (`ProyekEntity`/`ProyekDao`/`ProyekRepository` + koleksi Firestore `proyek`):
+      migrasi Room `v4 → v5` (tabel `proyek`), `FirestoreDataSource.pullProyek()` (tarik penuh, read-only),
+      `SyncRepository.pullLatestProyek()` dipanggil di `TriggerSyncUseCase`. Sumber kebenaran nama proyek
+      = website admin; app hanya membaca & meng-cache
 - [x] `DashboardScreen`: slot lokasi (📍) menampilkan `nama_proyek` (dulu keliru menampilkan `role`)
 - [x] Sinkron: `pullKatalog(since, idProyek)` menyaring hasil ke proyek si mandor
       (penyaringan di sisi klien agar cukup indeks satu-field `server_timestamp`, tanpa indeks komposit)
 
 ### Catatan & batasan (jujur)
-- **Penyaringan mutasi/transfer belum di-scope per proyek** di UI riwayat — hanya **katalog** yang
+- **Riwayat (`RiwayatScreen`) belum di-scope per proyek** — hanya **katalog** & **transfer masuk** yang
   disaring. Karena satu perangkat = satu mandor = satu proyek, mutasi/transfer yang tercatat di
   perangkat itu memang milik proyek tersebut, jadi belum menjadi masalah pada skenario single-device.
+- **Transfer sudah di-scope**: `proyek_asal` terikat ke proyek sesi (`nama_proyek`), dan
+  `TransferMasukScreen` hanya menampilkan transfer IN_TRANSIT yang `proyek_tujuan`-nya cocok dengan
+  proyek aktif. Karena `proyek_tujuan` kini **dipilih dari registry proyek** (bukan diketik), nama
+  proyek konsisten di kedua sisi dan pencocokan andal. Provisioning `users/{uid}` (nama_proyek penerima)
+  dan koleksi `proyek` sama-sama bersumber dari website admin.
 - **Provisioning `users/{uid}` belum otomatis**: dokumen ditulis manual/oleh website (belum ada).
   Untuk akun uji `budi@skn.com` yang belum punya dokumen, proyek jatuh ke fallback `PROYEK-UTAMA`
   sehingga Dashboard menampilkan "Proyek belum ditetapkan".
@@ -227,24 +239,52 @@ CHECK_IN:
 
 **Bergantung pada:** F2 (katalog harus ada)
 
+> **Catatan gap proposal:** Proposal hanya mendokumentasikan 1 wireframe (`wireframe_transfer.png`)
+> untuk sisi pengirim. Implementasi aktual memiliki **3 screen** — lihat checklist di bawah.
+> Enum `status_transfer` di teks proposal menyebut `PENDING_TRANSFER` tapi nilai aktual adalah `IN_TRANSIT`.
+
+### Alur F4 (2 Sisi)
+```
+[Proyek Asal — Pengirim]          [Proyek Tujuan — Penerima]
+TransferScreen                     TransferMasukScreen
+  → isi form (barang, tujuan,        → lihat daftar transfer IN_TRANSIT
+    jumlah)                            yang masuk ke proyek ini
+  → stok asal berkurang            TransferDetailScreen
+  → status = IN_TRANSIT              → lihat detail transfer
+                                     → tap "Konfirmasi Terima"
+                                     → status = SELESAI
+                                     → stok tujuan bertambah
+```
+
 ### Checklist Implementasi
 - [x] Implementasi `TransferRepositoryImpl`:
   - `createTransfer()`: insert `TransferProyekEntity` dengan `status_transfer = IN_TRANSIT`
-  - `updateStatusTransfer()`: update status ke SELESAI atau DIBATALKAN
+  - `updateStatusTransfer()`: update status ke `SELESAI` atau `DIBATALKAN`
   - `getPendingTransfer()` + `markSynced()`
-- [x] Implementasi `TransferScreen.kt`:
-  - Dropdown pilih barang (SKU)
-  - Input proyek asal (lokasi saat ini)
-  - Input proyek tujuan
-  - Input jumlah
-  - Tombol "Kirim" → buat transfer IN_TRANSIT
-  - List transfer aktif dengan status badge
-  - Tombol "Konfirmasi Terima" pada item IN_TRANSIT → update ke SELESAI
+  - `getAllTransfer()`: return `Flow` semua transfer dari Room
+- [x] Implementasi `TransferScreen.kt` — **sisi pengirim**:
+  - Dropdown kategori → dropdown barang (difilter per kategori)
+  - Tampil info stok proyek asal (**proyek asal = `nama_proyek` dari sesi**)
+  - **Dropdown proyek tujuan dari registry** (`proyekList`, kecuali proyek sendiri) — dipilih, bukan diketik, agar bebas typo
+  - Input jumlah (stepper, max = stok lokal)
+  - Banner info IN_TRANSIT
+  - Tombol "Kirim Aset" → `TransferViewModel.createTransfer()` → stok asal berkurang, status `IN_TRANSIT`
+- [x] Implementasi `TransferMasukScreen.kt` — **daftar transfer masuk**:
+  - Filter dari `transferList`: `status_transfer == IN_TRANSIT` **dan** `proyek_tujuan == proyek aktif` (dari sesi)
+  - Setiap item tampilkan: nama barang, proyek asal, jumlah, waktu
+  - Tap item → navigasi ke `TransferDetailScreen`
+- [x] Implementasi `TransferDetailScreen.kt` — **konfirmasi penerimaan**:
+  - Tampil detail lengkap transfer (barang, asal, tujuan, jumlah, status)
+  - Tombol "Konfirmasi Terima" → `TransferViewModel.konfirmasiTerima(idTransfer)` → status `SELESAI`
+  - Tombol "Batalkan" → status `DIBATALKAN`
+  - UI reaktif terhadap `uiState` (loading/sukses/error)
 
 ### Kriteria Selesai
-- Transfer dibuat → status IN_TRANSIT, stok di asal berkurang ✓
-- Konfirmasi penerimaan → status SELESAI, stok di tujuan bertambah ✓
-- Data tersimpan offline, PENDING sync ✓
+- Transfer dibuat → status `IN_TRANSIT`, stok proyek asal berkurang ✓
+- Muncul di `TransferMasukScreen` sisi penerima ✓
+- Konfirmasi penerimaan → status `SELESAI`, stok proyek tujuan bertambah ✓
+- Batalkan transfer → status `DIBATALKAN` ✓
+- Data tersimpan offline, `sync_status = PENDING` ✓
 
 ---
 
@@ -362,6 +402,44 @@ Target: TSR = 100% untuk semua 5 skenario concurrency.
 
 ---
 
+---
+
+## Gap Proposal vs Implementasi (Per Juli 2026)
+
+> Daftar ini merangkum semua perbedaan antara proposal penelitian (LaTeX chapter-3-christopher.tex)
+> dan kode yang sudah diimplementasi. Gunakan sebagai checklist revisi proposal sebelum sidang.
+
+### ❌ Yang perlu direvisi di PROPOSAL
+
+| # | Item | Kondisi Saat Ini di Proposal | Yang Perlu Dilakukan |
+|---|---|---|---|
+| 1 | **Wireframe Transfer — sisi penerima** | Hanya ada `wireframe_transfer.png` (sisi pengirim). `TransferMasukScreen` dan `TransferDetailScreen` tidak ada wireframe-nya | Buat 2 wireframe baru + update teks sub-poin e) F4 untuk menjelaskan alur 2 sisi |
+| 2 | **Teks Transfer sub-poin e)** | Menyebut `status_transfer = PENDING_TRANSFER` (enum salah) | Ganti jadi `IN_TRANSIT` sesuai `StatusTransfer` enum aktual |
+| 3 | **Skema `UserSession` di LaTeX CLAUDE.md** | Masih versi lama — tidak punya `id_proyek` dan `nama_proyek` | Update LaTeX CLAUDE.md + pertimbangkan update ERD di proposal |
+| 4 | **Skema `MasterKatalog` di LaTeX CLAUDE.md** | Tidak punya `id_proyek` | Sama seperti di atas |
+
+### ✅ Yang sudah sesuai antara proposal dan kode
+
+| Item | Status |
+|---|---|
+| Semua atribut `LogMutasi` (id_mandor, id_proyek, kondisi_barang, lokasi_penggunaan, penanggungjawab) | ✅ Sesuai |
+| Aturan kondisi_barang: wajib untuk alat, null untuk bahan/scaffolding | ✅ Sesuai (UI + UseCase) |
+| `KategoriBarang` constants (3 kategori tetap) | ✅ Ada di `Constants.kt` |
+| `stok_minimum` di MasterKatalog | ✅ Sesuai |
+| Room DB version 4 dengan 4 migrasi bertahap | ✅ Sesuai |
+| `RecordMutasiUseCase` validasi kategori + stok atomik | ✅ Sesuai |
+
+### 📋 Deviasi desain disengaja (tidak perlu direvisi, cukup disebutkan di Bab IV)
+
+| Deviasi | Keterangan |
+|---|---|
+| Sync otomatis menggantikan tombol "Sync Manual" | Dipicu setelah setiap operasi tulis + periodik 15 menit |
+| `ProfileScreen` (bukan di proposal) | Diakses via avatar inisial di header Dashboard — berisi identitas, proyek aktif, last sync, logout |
+| Dashboard didesain ulang | "Mutasi Hari Ini", "Menunggu Sinkron", aksi cepat — bukan "total SKU/5 barang terakhir" |
+| Hapus katalog UI belum dipasang | Logika ada di ViewModel/Repository, gestur swipe/long-press belum diimplementasi di UI |
+
+---
+
 ## Tips Debugging Umum
 
 **Room tidak update UI:**
@@ -400,7 +478,9 @@ presentation/ui/dashboard/DashboardScreen.kt ← F2
 presentation/ui/katalog/KatalogScreen.kt     ← F2
 presentation/ui/katalog/TambahKatalogScreen.kt ← F2
 presentation/ui/mutasi/MutasiScreen.kt       ← F3
-presentation/ui/transfer/TransferScreen.kt   ← F4
+presentation/ui/transfer/TransferScreen.kt        ← F4 (sisi pengirim)
+presentation/ui/transfer/TransferMasukScreen.kt   ← F4 (daftar masuk)
+presentation/ui/transfer/TransferDetailScreen.kt  ← F4 (konfirmasi terima)
 presentation/ui/riwayat/RiwayatScreen.kt     ← F5
 
 presentation/viewmodel/TransferViewModel.kt  ← F4

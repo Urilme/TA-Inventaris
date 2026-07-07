@@ -201,7 +201,7 @@ fun LoginScreen(
                 Spacer(modifier = Modifier.height(10.dp))
                 Text(
                     if (isOnline) "Terhubung ke jaringan. Kredensial diverifikasi ke server."
-                    else "Mode luring — login pertama memerlukan internet. Bila sudah pernah masuk, sesi tersimpan dapat digunakan tanpa sinyal.",
+                    else "Mode offline — login pertama memerlukan internet. Bila sudah pernah masuk, sesi tersimpan dapat digunakan tanpa sinyal.",
                     fontSize = 12.sp, lineHeight = 18.sp, color = TextSubtle
                 )
             }

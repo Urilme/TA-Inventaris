@@ -25,13 +25,10 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.LocalShipping
-import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -72,21 +69,19 @@ import com.ta.konstruksi.presentation.ui.theme.TextSubtle
 import com.ta.konstruksi.presentation.viewmodel.TransferUiState
 import com.ta.konstruksi.presentation.viewmodel.TransferViewModel
 
-private val proyekList = listOf(
-    "Tol Trans-Jawa Seksi 4", "Bendungan Cikalong", "Jalan Tol BORR Seksi 2B",
-    "Proyek Flyover Ahmad Yani", "Jembatan Mahakam IV"
-)
-
 @Composable
 fun TransferScreen(
     onBack: () -> Unit,
     navController: NavController,
-    proyekAsal: String = "Proyek Aktif",
     isOnline: Boolean = false,
     viewModel: TransferViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val katalogList by viewModel.katalogList.collectAsStateWithLifecycle()
+    val session by viewModel.session.collectAsStateWithLifecycle()
+    val proyekOptions by viewModel.proyekList.collectAsStateWithLifecycle()
+    // Proyek asal = proyek aktif mandor dari sesi (bukan placeholder statis)
+    val proyekAsal = session?.nama_proyek?.takeIf { it.isNotBlank() } ?: "Proyek Anda"
     val snackbarHostState = remember { SnackbarHostState() }
 
     val kategoriList = remember(katalogList) { katalogList.map { it.kategori }.distinct().sorted() }
@@ -188,29 +183,29 @@ fun TransferScreen(
 
                 Spacer(Modifier.height(18.dp))
 
-                // Proyek Tujuan
+                // Proyek Tujuan — DIPILIH dari registry proyek (bukan diketik) agar bebas typo.
+                // Daftar berasal dari koleksi Firestore `proyek` (dikelola website admin), di-cache lokal.
                 FormLabel("Proyek Tujuan")
                 Spacer(Modifier.height(8.dp))
+                val opsiTujuan = proyekOptions.filter { it.id_proyek != session?.id_proyek }
                 var proyekExpanded by remember { mutableStateOf(false) }
                 Box {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().height(58.dp).clip(RoundedCornerShape(12.dp)).background(Color.White)
-                            .border(1.5.dp, if (proyekTujuan.isNotEmpty()) Navy else BorderInput, RoundedCornerShape(12.dp))
-                            .clickable { proyekExpanded = true }.padding(horizontal = 16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(Icons.Default.Place, null, tint = TextSubtle, modifier = Modifier.size(22.dp))
-                        Spacer(Modifier.width(12.dp))
-                        Text(
-                            proyekTujuan.ifEmpty { "Pilih Proyek Tujuan" },
-                            fontSize = 16.sp, fontWeight = if (proyekTujuan.isNotEmpty()) FontWeight.Medium else FontWeight.Normal,
-                            color = if (proyekTujuan.isEmpty()) TextSubtle else Navy, modifier = Modifier.weight(1f)
-                        )
-                        Icon(Icons.Default.ExpandMore, null, tint = TextSubtle, modifier = Modifier.size(24.dp))
-                    }
+                    DropdownField(
+                        value = proyekTujuan.ifEmpty { "Pilih Proyek Tujuan" },
+                        isPlaceholder = proyekTujuan.isEmpty(),
+                        isSelected = proyekTujuan.isNotEmpty(),
+                        onClick = { proyekExpanded = true }
+                    )
                     AppDropdownMenu(expanded = proyekExpanded, onDismissRequest = { proyekExpanded = false }) {
-                        proyekList.filter { it != proyekAsal }.forEach { proyek ->
-                            AppDropdownItem(text = proyek, selected = proyek == proyekTujuan, onClick = { proyekTujuan = proyek; proyekExpanded = false })
+                        opsiTujuan.forEach { proyek ->
+                            AppDropdownItem(
+                                text = proyek.nama_proyek,
+                                selected = proyek.nama_proyek == proyekTujuan,
+                                onClick = { proyekTujuan = proyek.nama_proyek; proyekExpanded = false }
+                            )
+                        }
+                        if (opsiTujuan.isEmpty()) {
+                            AppDropdownItem(text = "Belum ada proyek lain — sinkronkan saat online", enabled = false, onClick = {})
                         }
                     }
                 }
@@ -269,14 +264,16 @@ fun TransferScreen(
 
                 // KIRIM button
                 val withinStock = selectedItem?.let { jumlah in 1..it.stok_lokal } ?: false
-                val canSend = selectedItem != null && proyekTujuan.isNotEmpty() && withinStock &&
+                val tujuanValid = proyekTujuan.isNotBlank() &&
+                    !proyekTujuan.trim().equals(proyekAsal, ignoreCase = true)
+                val canSend = selectedItem != null && tujuanValid && withinStock &&
                     uiState !is TransferUiState.Loading
                 Column(
                     modifier = Modifier.fillMaxWidth().height(62.dp).clip(RoundedCornerShape(14.dp))
                         .background(if (canSend) Navy else Color(0xFFB0BEC5))
                         .clickable(enabled = canSend) {
                             selectedItem?.let { item ->
-                                viewModel.createTransfer(item.sku_id, proyekTujuan, jumlah, proyekAsal)
+                                viewModel.createTransfer(item.sku_id, proyekTujuan.trim(), jumlah, proyekAsal)
                             }
                         },
                     horizontalAlignment = Alignment.CenterHorizontally,

@@ -2,9 +2,11 @@ package com.ta.konstruksi.data.repository
 
 import com.ta.konstruksi.data.local.entity.LogMutasiEntity
 import com.ta.konstruksi.data.local.entity.MasterKatalogEntity
+import com.ta.konstruksi.data.local.entity.ProyekEntity
 import com.ta.konstruksi.data.local.entity.TransferProyekEntity
 import com.ta.konstruksi.domain.model.LogMutasi
 import com.ta.konstruksi.domain.model.MasterKatalog
+import com.ta.konstruksi.domain.model.Proyek
 import com.ta.konstruksi.domain.model.TransferProyek
 import com.ta.konstruksi.util.JenisMutasi
 import com.ta.konstruksi.util.KondisiBarang
@@ -78,6 +80,17 @@ internal fun LogMutasi.toEntity() = LogMutasiEntity(
     catatan = catatan,
     local_timestamp = local_timestamp,
     sync_status = sync_status.name
+)
+
+// --- Proyek ---
+internal fun ProyekEntity.toDomain() = Proyek(
+    id_proyek = id_proyek,
+    nama_proyek = nama_proyek
+)
+
+internal fun Proyek.toEntity() = ProyekEntity(
+    id_proyek = id_proyek,
+    nama_proyek = nama_proyek
 )
 
 // --- TransferProyek ---

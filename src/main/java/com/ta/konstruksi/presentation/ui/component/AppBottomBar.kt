@@ -167,5 +167,5 @@ private fun NavController.switchTab(route: String) {
 /** Buka layar Mutasi sebagai aksi terfokus (bukan tab yang disimpan state-nya). */
 private fun NavController.openMutasi() {
     if (currentDestination?.route == Screen.Mutasi.route) return
-    navigate(Screen.Mutasi.route) { launchSingleTop = true }
+    navigate(Screen.Mutasi.createRoute()) { launchSingleTop = true }
 }

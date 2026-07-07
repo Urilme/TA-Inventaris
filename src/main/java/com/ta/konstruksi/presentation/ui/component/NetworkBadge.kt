@@ -46,7 +46,7 @@ fun NetworkBadge(
         if (isOnline) GreenBorder else AmberBorder
     }
     val textColor = if (onDarkBg) Color.White else if (isOnline) GreenText else AmberText
-    val label = if (isOnline) "DARING" else "LURING"
+    val label = if (isOnline) "ONLINE" else "OFFLINE"
 
     Row(
         modifier = modifier

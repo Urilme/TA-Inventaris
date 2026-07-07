@@ -5,6 +5,7 @@ interface SyncRepository {
     suspend fun syncPendingMutasi(): Result<Int>   // returns count synced
     suspend fun syncPendingTransfer(): Result<Int>
     suspend fun pullLatestKatalog(): Result<Unit>
+    suspend fun pullLatestProyek(): Result<Unit>
     suspend fun getLastSyncTimestamp(): Long
     suspend fun updateLastSyncTimestamp(timestamp: Long)
 }

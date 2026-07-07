@@ -16,6 +16,7 @@ object Constants {
     const val COLLECTION_KATALOG = "katalog"
     const val COLLECTION_MUTASI = "mutasi"
     const val COLLECTION_TRANSFER = "transfer"
+    const val COLLECTION_PROYEK = "proyek"   // registry proyek (read-only, dikelola website admin)
 }
 
 /**

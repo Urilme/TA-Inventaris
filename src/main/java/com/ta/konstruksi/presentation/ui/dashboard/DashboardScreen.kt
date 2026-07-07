@@ -20,14 +20,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.automirrored.filled.Login
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.CloudOff
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material3.Icon
@@ -47,6 +45,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.ta.konstruksi.domain.model.MasterKatalog
+import com.ta.konstruksi.util.JenisMutasi
 import com.ta.konstruksi.util.KategoriBarang
 import com.ta.konstruksi.presentation.navigation.Screen
 import com.ta.konstruksi.presentation.ui.component.AppBottomBar
@@ -58,6 +57,7 @@ import com.ta.konstruksi.presentation.ui.theme.AmberMain
 import com.ta.konstruksi.presentation.ui.theme.AmberText
 import com.ta.konstruksi.presentation.ui.theme.AppBackground
 import com.ta.konstruksi.presentation.ui.theme.BorderLight
+import com.ta.konstruksi.presentation.ui.theme.GreenMain
 import com.ta.konstruksi.presentation.ui.theme.InfoBg
 import com.ta.konstruksi.presentation.ui.theme.InfoBorder
 import com.ta.konstruksi.presentation.ui.theme.Navy
@@ -181,19 +181,26 @@ fun DashboardScreen(
 
                 Spacer(Modifier.height(22.dp))
 
-                // Quick actions
+                // Aksi cepat — pintasan ke form Mutasi dengan jenis sudah terpilih.
+                // (Bukan duplikat navbar: navbar menuju halaman, ini langsung ke aksi harian.)
+                Text("Catat Cepat", fontSize = 16.sp, fontWeight = FontWeight.Black, color = Navy)
+                Spacer(Modifier.height(4.dp))
+                Text("Langsung ke form dengan jenis mutasi terpilih.", fontSize = 12.sp, color = TextSubtle)
+                Spacer(Modifier.height(12.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     QuickActionButton(
                         modifier = Modifier.weight(1f),
-                        icon = Icons.Default.LocalShipping,
-                        label = "Transfer Keluar",
-                        onClick = { navController.navigate(Screen.Transfer.route) }
+                        icon = Icons.AutoMirrored.Filled.Login,
+                        label = "Barang Masuk",
+                        accent = GreenMain,
+                        onClick = { navController.navigate(Screen.Mutasi.createRoute(JenisMutasi.CHECK_IN)) }
                     )
                     QuickActionButton(
                         modifier = Modifier.weight(1f),
-                        icon = Icons.Default.Inventory,
-                        label = "Katalog",
-                        onClick = { navController.navigate(Screen.Katalog.route) }
+                        icon = Icons.AutoMirrored.Filled.Logout,
+                        label = "Barang Keluar",
+                        accent = RedMain,
+                        onClick = { navController.navigate(Screen.Mutasi.createRoute(JenisMutasi.CHECK_OUT)) }
                     )
                 }
 
@@ -271,7 +278,7 @@ private fun PendingSyncSection(items: List<PendingSyncItem>, isOnline: Boolean) 
             Spacer(Modifier.width(10.dp))
             Text(
                 if (isOnline) "Menyinkronkan ${items.size} item…"
-                else "Mode Luring — ${items.size} item belum tersinkron",
+                else "Mode Offline — ${items.size} item belum tersinkron",
                 fontSize = 14.sp, fontWeight = FontWeight.Bold,
                 color = if (isOnline) Navy else AmberText
             )
@@ -337,6 +344,7 @@ private fun QuickActionButton(
     modifier: Modifier = Modifier,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     label: String,
+    accent: Color = Navy,
     onClick: () -> Unit
 ) {
     Row(
@@ -345,11 +353,11 @@ private fun QuickActionButton(
             .background(Color.White)
             .border(1.5.dp, BorderLight, RoundedCornerShape(12.dp))
             .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 12.dp),
+            .padding(horizontal = 14.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center
     ) {
-        Icon(icon, contentDescription = null, tint = Navy, modifier = Modifier.size(20.dp))
+        Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(8.dp))
         Text(label, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Navy)
     }

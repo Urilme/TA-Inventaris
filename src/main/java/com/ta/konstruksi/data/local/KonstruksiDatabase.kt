@@ -10,9 +10,10 @@ import com.ta.konstruksi.data.local.entity.*
         UserSessionEntity::class,
         MasterKatalogEntity::class,
         LogMutasiEntity::class,
-        TransferProyekEntity::class
+        TransferProyekEntity::class,
+        ProyekEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = true
 )
 abstract class KonstruksiDatabase : RoomDatabase() {
@@ -20,4 +21,5 @@ abstract class KonstruksiDatabase : RoomDatabase() {
     abstract fun masterKatalogDao(): MasterKatalogDao
     abstract fun logMutasiDao(): LogMutasiDao
     abstract fun transferProyekDao(): TransferProyekDao
+    abstract fun proyekDao(): ProyekDao
 }

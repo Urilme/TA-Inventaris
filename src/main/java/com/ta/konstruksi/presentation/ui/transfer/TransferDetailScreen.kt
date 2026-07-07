@@ -120,7 +120,7 @@ fun TransferDetailScreen(
                         Spacer(Modifier.width(12.dp))
                         Column {
                             Text(
-                                katalogItem?.nama_barang ?: transfer.sku_id,
+                                katalogItem?.nama_barang ?: "Barang tidak dikenal",
                                 fontSize = 18.sp, fontWeight = FontWeight.Black, color = Navy
                             )
                             Text(katalogItem?.kategori?.let { KategoriBarang.label(it) } ?: "", fontSize = 12.sp, color = TextSubtle)
@@ -132,7 +132,7 @@ fun TransferDetailScreen(
                         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Color.White)
                             .border(1.5.dp, BorderLight, RoundedCornerShape(14.dp)).padding(horizontal = 16.dp)
                     ) {
-                        DetailRow("Nama Barang", katalogItem?.nama_barang ?: transfer.sku_id)
+                        DetailRow("Nama Barang", katalogItem?.nama_barang ?: "Barang tidak dikenal")
                         DetailRow("Kategori", katalogItem?.kategori?.let { KategoriBarang.label(it) } ?: "-")
                         DetailRow("Jumlah", "${transfer.jumlah} ${katalogItem?.satuan ?: "unit"}")
                         DetailRow("Dari Proyek", transfer.proyek_asal)
