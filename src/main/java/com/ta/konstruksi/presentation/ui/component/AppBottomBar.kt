@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,6 +24,7 @@ import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,11 +34,15 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.ta.konstruksi.presentation.navigation.Screen
 import com.ta.konstruksi.presentation.ui.theme.BorderLight
 import com.ta.konstruksi.presentation.ui.theme.Navy
+import com.ta.konstruksi.presentation.ui.theme.RedMain
 import com.ta.konstruksi.presentation.ui.theme.TextSubtle
+import com.ta.konstruksi.presentation.viewmodel.IncomingTransferViewModel
 
 /** Tinggi total area navbar (termasuk tonjolan tombol tengah). Dipakai layar untuk padding bawah. */
 val AppBottomBarHeight = 76.dp
@@ -49,7 +55,14 @@ val AppBottomBarHeight = 76.dp
  * @param currentRoute route layar aktif — untuk menyorot tab yang sedang dibuka.
  */
 @Composable
-fun AppBottomBar(navController: NavController, currentRoute: String, modifier: Modifier = Modifier) {
+fun AppBottomBar(
+    navController: NavController,
+    currentRoute: String,
+    modifier: Modifier = Modifier,
+    incomingViewModel: IncomingTransferViewModel = hiltViewModel()
+) {
+    val incomingCount by incomingViewModel.count.collectAsStateWithLifecycle()
+
     Box(modifier = modifier.navigationBarsPadding().fillMaxWidth().height(AppBottomBarHeight)) {
 
         // Bilah putih dengan 4 tab + celah tengah untuk tombol Mutasi
@@ -79,6 +92,7 @@ fun AppBottomBar(navController: NavController, currentRoute: String, modifier: M
                 modifier = Modifier.weight(1f),
                 icon = Icons.Default.LocalShipping, label = "Transfer",
                 selected = currentRoute == Screen.Transfer.route,
+                badgeCount = incomingCount,
                 onClick = { navController.switchTab(Screen.Transfer.route) }
             )
             BarTab(
@@ -124,6 +138,7 @@ private fun BarTab(
     icon: ImageVector,
     label: String,
     selected: Boolean,
+    badgeCount: Int = 0,
     onClick: () -> Unit
 ) {
     Column(
@@ -134,7 +149,27 @@ private fun BarTab(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Icon(icon, contentDescription = label, tint = if (selected) Navy else TextSubtle, modifier = Modifier.size(24.dp))
+        // Ikon + badge jumlah transfer masuk yang menunggu konfirmasi (bila ada)
+        Box(contentAlignment = Alignment.Center) {
+            Icon(icon, contentDescription = label, tint = if (selected) Navy else TextSubtle, modifier = Modifier.size(24.dp))
+            if (badgeCount > 0) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .offset(x = 11.dp, y = (-7).dp)
+                        .size(if (badgeCount > 9) 18.dp else 16.dp)
+                        .clip(CircleShape)
+                        .background(RedMain)
+                        .border(1.5.dp, Color.White, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        if (badgeCount > 9) "9+" else badgeCount.toString(),
+                        fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color.White
+                    )
+                }
+            }
+        }
         Spacer(Modifier.height(3.dp))
         Text(
             label, fontSize = 11.sp,

@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.LocalShipping
+import androidx.compose.material.icons.filled.MoveToInbox
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.Icon
@@ -54,6 +55,8 @@ import com.ta.konstruksi.presentation.navigation.Screen
 import com.ta.konstruksi.presentation.ui.component.AppBottomBar
 import com.ta.konstruksi.presentation.ui.component.AppDropdownItem
 import com.ta.konstruksi.presentation.ui.component.AppDropdownMenu
+import com.ta.konstruksi.presentation.ui.component.ConfirmActionDialog
+import com.ta.konstruksi.presentation.ui.component.ConfirmInfoRow
 import com.ta.konstruksi.presentation.ui.component.NetworkBadge
 import com.ta.konstruksi.presentation.ui.theme.AmberBg
 import com.ta.konstruksi.presentation.ui.theme.AmberBorder
@@ -89,15 +92,17 @@ fun TransferScreen(
     var selectedItem by remember { mutableStateOf<MasterKatalog?>(null) }
     var proyekTujuan by remember { mutableStateOf("") }
     var jumlah by remember { mutableIntStateOf(1) }
+    var showConfirm by remember { mutableStateOf(false) }
     val filteredItems = katalogList.filter { selectedKategori.isEmpty() || it.kategori == selectedKategori }
 
     LaunchedEffect(uiState) {
         if (uiState is TransferUiState.Success) {
-            snackbarHostState.showSnackbar("Transfer berhasil dibuat — IN_TRANSIT")
+            snackbarHostState.showSnackbar("Transfer berhasil dibuat — Dalam Perjalanan")
             viewModel.reset()
             onBack()
         }
         if (uiState is TransferUiState.Error) {
+            showConfirm = false
             snackbarHostState.showSnackbar((uiState as TransferUiState.Error).message)
         }
     }
@@ -114,6 +119,10 @@ fun TransferScreen(
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Color.White)
                 }
                 Text("Transfer Aset", fontSize = 18.sp, fontWeight = FontWeight.Black, color = Color.White, modifier = Modifier.weight(1f))
+                IconButton(onClick = { navController.navigate(Screen.TransferMasuk.route) }) {
+                    Icon(Icons.Default.MoveToInbox, contentDescription = "Transfer Masuk", tint = Color.White)
+                }
+                Spacer(Modifier.width(4.dp))
                 NetworkBadge(isOnline = isOnline)
             }
 
@@ -255,7 +264,7 @@ fun TransferScreen(
                     Icon(Icons.Default.LocalShipping, null, tint = AmberMain, modifier = Modifier.size(22.dp))
                     Spacer(Modifier.width(10.dp))
                     Text(
-                        "Aset akan ditandai DALAM PERJALANAN (IN_TRANSIT) hingga dikonfirmasi diterima proyek tujuan.",
+                        "Aset akan ditandai DALAM PERJALANAN hingga dikonfirmasi diterima proyek tujuan.",
                         fontSize = 12.sp, lineHeight = 18.sp, color = AmberText
                     )
                 }
@@ -271,11 +280,7 @@ fun TransferScreen(
                 Column(
                     modifier = Modifier.fillMaxWidth().height(62.dp).clip(RoundedCornerShape(14.dp))
                         .background(if (canSend) Navy else Color(0xFFB0BEC5))
-                        .clickable(enabled = canSend) {
-                            selectedItem?.let { item ->
-                                viewModel.createTransfer(item.sku_id, proyekTujuan.trim(), jumlah, proyekAsal)
-                            }
-                        },
+                        .clickable(enabled = canSend) { showConfirm = true },
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
@@ -285,6 +290,41 @@ fun TransferScreen(
                         Text("KIRIM ASET", fontSize = 16.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp, color = Color.White)
                     }
                     Text("DALAM PERJALANAN", fontSize = 11.sp, fontWeight = FontWeight.Medium, letterSpacing = 1.sp, color = Color(0xFF9fb0bf))
+                }
+
+                // Guard konfirmasi sebelum stok proyek asal berkurang & aset dikirim IN_TRANSIT
+                selectedItem?.let { item ->
+                    if (showConfirm) {
+                        ConfirmActionDialog(
+                            icon = Icons.AutoMirrored.Filled.Send,
+                            accent = Navy,
+                            accentBg = InfoBg,
+                            title = "Konfirmasi Pengiriman",
+                            subtitle = "Kirim aset ke proyek lain",
+                            message = "Aset ditandai DALAM PERJALANAN hingga dikonfirmasi diterima proyek tujuan. Stok di proyek Anda akan langsung berkurang.",
+                            confirmLabel = "Ya, Kirim",
+                            confirmColor = Navy,
+                            confirmIcon = Icons.AutoMirrored.Filled.Send,
+                            isProcessing = uiState is TransferUiState.Loading,
+                            onDismiss = { showConfirm = false },
+                            onConfirm = {
+                                // kirim item utuh agar transfer membawa snapshot barang (nama/kategori/satuan)
+                                viewModel.createTransfer(item, proyekTujuan.trim(), jumlah, proyekAsal)
+                            },
+                            content = {
+                                Column(
+                                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
+                                        .background(InfoBg).border(1.5.dp, InfoBorder, RoundedCornerShape(14.dp))
+                                        .padding(horizontal = 14.dp, vertical = 6.dp)
+                                ) {
+                                    ConfirmInfoRow("Barang", item.nama_barang)
+                                    ConfirmInfoRow("Jumlah", "−$jumlah ${item.satuan}", valueColor = Navy)
+                                    ConfirmInfoRow("Ke Proyek", proyekTujuan)
+                                    ConfirmInfoRow("Stok Anda", "${item.stok_lokal} → ${item.stok_lokal - jumlah} ${item.satuan}")
+                                }
+                            }
+                        )
+                    }
                 }
             }
         }

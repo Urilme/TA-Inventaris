@@ -7,10 +7,10 @@ import javax.inject.Inject
 class LoginUseCase @Inject constructor(
     private val authRepository: AuthRepository
 ) {
-    suspend operator fun invoke(email: String, password: String): Result<UserSession> {
-        if (email.isBlank() || password.isBlank()) {
-            return Result.failure(IllegalArgumentException("Email dan password tidak boleh kosong"))
+    suspend operator fun invoke(username: String, password: String): Result<UserSession> {
+        if (username.isBlank() || password.isBlank()) {
+            return Result.failure(IllegalArgumentException("Username dan kata sandi tidak boleh kosong"))
         }
-        return authRepository.login(email, password)
+        return authRepository.login(username, password)
     }
 }

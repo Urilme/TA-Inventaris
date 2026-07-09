@@ -24,8 +24,10 @@ import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.HourglassEmpty
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.MoveToInbox
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material3.Icon
@@ -173,6 +175,17 @@ fun DashboardScreen(
                     )
                 }
 
+                // Peringatan transfer masuk — aset dari proyek lain menunggu konfirmasi penerimaan.
+                // Ditaruh menonjol di atas agar tidak terlewat (kesadaran, bukan perlu dicari).
+                if (state.incomingTransferCount > 0) {
+                    Spacer(Modifier.height(14.dp))
+                    IncomingTransferCard(
+                        count = state.incomingTransferCount,
+                        proyek = state.session?.nama_proyek?.takeIf { it.isNotBlank() } ?: "proyek Anda",
+                        onClick = { navController.navigate(Screen.TransferMasuk.route) }
+                    )
+                }
+
                 // Daftar item yang belum tersinkron (auto-sync di latar belakang)
                 if (state.pendingItems.isNotEmpty()) {
                     Spacer(Modifier.height(14.dp))
@@ -255,6 +268,40 @@ fun DashboardScreen(
             currentRoute = Screen.Dashboard.route,
             modifier = Modifier.align(Alignment.BottomCenter)
         )
+    }
+}
+
+@Composable
+private fun IncomingTransferCard(count: Int, proyek: String, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(AmberBg)
+            .border(1.5.dp, AmberBorder, RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick)
+            .padding(14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier.size(40.dp).clip(RoundedCornerShape(10.dp)).background(Color.White),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(Icons.Default.MoveToInbox, contentDescription = null, tint = AmberMain, modifier = Modifier.size(22.dp))
+        }
+        Spacer(Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                "$count aset menunggu konfirmasi",
+                fontSize = 15.sp, fontWeight = FontWeight.Black, color = AmberText
+            )
+            Text(
+                "Dikirim dari proyek lain ke $proyek — ketuk untuk konfirmasi.",
+                fontSize = 12.sp, lineHeight = 17.sp, color = Color(0xFFb08742)
+            )
+        }
+        Spacer(Modifier.width(8.dp))
+        Icon(Icons.Default.ChevronRight, contentDescription = null, tint = AmberMain, modifier = Modifier.size(24.dp))
     }
 }
 

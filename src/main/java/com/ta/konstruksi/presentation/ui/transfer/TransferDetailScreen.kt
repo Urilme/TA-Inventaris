@@ -33,6 +33,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -43,6 +46,8 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ta.konstruksi.domain.model.TransferProyek
+import com.ta.konstruksi.presentation.ui.component.ConfirmActionDialog
+import com.ta.konstruksi.presentation.ui.component.ConfirmInfoRow
 import com.ta.konstruksi.presentation.ui.component.NetworkBadge
 import com.ta.konstruksi.presentation.ui.theme.AmberBg
 import com.ta.konstruksi.presentation.ui.theme.AmberBorder
@@ -53,6 +58,8 @@ import com.ta.konstruksi.presentation.ui.theme.BorderLight
 import com.ta.konstruksi.presentation.ui.theme.GreenBg
 import com.ta.konstruksi.presentation.ui.theme.GreenBorder
 import com.ta.konstruksi.presentation.ui.theme.GreenMain
+import com.ta.konstruksi.presentation.ui.theme.InfoBg
+import com.ta.konstruksi.presentation.ui.theme.InfoBorder
 import com.ta.konstruksi.presentation.ui.theme.Navy
 import com.ta.konstruksi.presentation.ui.theme.RedBg
 import com.ta.konstruksi.presentation.ui.theme.RedBorder
@@ -79,6 +86,7 @@ fun TransferDetailScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val transfer = transferList.find { it.id_transfer == idTransfer }
     val katalogItem = transfer?.let { t -> katalogList.find { it.sku_id == t.sku_id } }
+    var showConfirm by remember { mutableStateOf(false) }
 
     // Kembali hanya setelah konfirmasi benar-benar tersimpan
     LaunchedEffect(uiState) {
@@ -108,6 +116,10 @@ fun TransferDetailScreen(
                     Text("Transfer tidak ditemukan", color = TextSubtle)
                 }
             } else {
+                // Utamakan snapshot pada transfer (self-describing); fallback ke katalog lokal bila kosong.
+                val namaBarang = transfer.nama_barang.ifBlank { katalogItem?.nama_barang ?: "Barang tidak dikenal" }
+                val kategoriRaw = transfer.kategori.ifBlank { katalogItem?.kategori ?: "" }
+                val satuan = transfer.satuan.ifBlank { katalogItem?.satuan ?: "unit" }
                 Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(18.dp)) {
                     // Item header
                     Row(modifier = Modifier.fillMaxWidth().padding(bottom = 18.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -120,10 +132,10 @@ fun TransferDetailScreen(
                         Spacer(Modifier.width(12.dp))
                         Column {
                             Text(
-                                katalogItem?.nama_barang ?: "Barang tidak dikenal",
+                                namaBarang,
                                 fontSize = 18.sp, fontWeight = FontWeight.Black, color = Navy
                             )
-                            Text(katalogItem?.kategori?.let { KategoriBarang.label(it) } ?: "", fontSize = 12.sp, color = TextSubtle)
+                            Text(if (kategoriRaw.isBlank()) "" else KategoriBarang.label(kategoriRaw), fontSize = 12.sp, color = TextSubtle)
                         }
                     }
 
@@ -132,9 +144,9 @@ fun TransferDetailScreen(
                         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Color.White)
                             .border(1.5.dp, BorderLight, RoundedCornerShape(14.dp)).padding(horizontal = 16.dp)
                     ) {
-                        DetailRow("Nama Barang", katalogItem?.nama_barang ?: "Barang tidak dikenal")
-                        DetailRow("Kategori", katalogItem?.kategori?.let { KategoriBarang.label(it) } ?: "-")
-                        DetailRow("Jumlah", "${transfer.jumlah} ${katalogItem?.satuan ?: "unit"}")
+                        DetailRow("Nama Barang", namaBarang)
+                        DetailRow("Kategori", if (kategoriRaw.isBlank()) "-" else KategoriBarang.label(kategoriRaw))
+                        DetailRow("Jumlah", "${transfer.jumlah} $satuan")
                         DetailRow("Dari Proyek", transfer.proyek_asal)
                         DetailRow("Ke Proyek", transfer.proyek_tujuan, isLast = false, isHighlight = true)
                         DetailRow("Waktu Kirim", SimpleDateFormat("dd MMM yyyy, HH:mm", Locale("id")).format(Date(transfer.local_timestamp)))
@@ -170,6 +182,12 @@ fun TransferDetailScreen(
                                 StatusTransfer.SELESAI -> Icons.Default.CheckCircle
                                 StatusTransfer.DIBATALKAN -> Icons.Default.Info
                             }
+                            // Label manusiawi — hindari istilah teknis IN_TRANSIT di UI
+                            val badgeLabel = when (transfer.status_transfer) {
+                                StatusTransfer.IN_TRANSIT -> "DALAM PERJALANAN"
+                                StatusTransfer.SELESAI -> "SELESAI"
+                                StatusTransfer.DIBATALKAN -> "DIBATALKAN"
+                            }
                             Row(
                                 modifier = Modifier.clip(RoundedCornerShape(999.dp))
                                     .background(badgeBg)
@@ -179,7 +197,7 @@ fun TransferDetailScreen(
                             ) {
                                 Icon(badgeIcon, null, tint = badgeTint, modifier = Modifier.size(15.dp))
                                 Spacer(Modifier.width(6.dp))
-                                Text(transfer.status_transfer.name, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.4.sp, color = badgeTextColor)
+                                Text(badgeLabel, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.4.sp, color = badgeTextColor)
                             }
                         }
                     }
@@ -206,7 +224,7 @@ fun TransferDetailScreen(
                                 enabled = transfer.status_transfer == StatusTransfer.IN_TRANSIT &&
                                     uiState !is TransferUiState.Loading
                             ) {
-                                viewModel.confirmTransfer(transfer.id_transfer, transfer.sku_id, transfer.jumlah)
+                                showConfirm = true
                             },
                         contentAlignment = Alignment.Center
                     ) {
@@ -232,6 +250,35 @@ fun TransferDetailScreen(
                             Text("Laporkan Masalah", fontSize = 15.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.4.sp, color = TextPrimary)
                         }
                     }
+                }
+
+                // Guard konfirmasi sebelum stok berpindah ke proyek penerima (status → SELESAI)
+                if (showConfirm) {
+                    ConfirmActionDialog(
+                        icon = Icons.Default.CheckCircle,
+                        accent = GreenMain,
+                        accentBg = GreenBg,
+                        title = "Konfirmasi Penerimaan",
+                        subtitle = "Aset diterima",
+                        message = "Stok akan ditambahkan ke katalog proyek Anda dan status transfer menjadi SELESAI. Pastikan aset sudah diterima secara fisik.",
+                        confirmLabel = "Ya, Terima",
+                        confirmColor = GreenMain,
+                        confirmIcon = Icons.Default.CheckCircle,
+                        isProcessing = uiState is TransferUiState.Loading,
+                        onDismiss = { showConfirm = false },
+                        onConfirm = { viewModel.confirmTransfer(transfer) },
+                        content = {
+                            Column(
+                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
+                                    .background(InfoBg).border(1.5.dp, InfoBorder, RoundedCornerShape(14.dp))
+                                    .padding(horizontal = 14.dp, vertical = 6.dp)
+                            ) {
+                                ConfirmInfoRow("Barang", namaBarang)
+                                ConfirmInfoRow("Jumlah", "${transfer.jumlah} $satuan")
+                                ConfirmInfoRow("Dari Proyek", transfer.proyek_asal)
+                            }
+                        }
+                    )
                 }
             }
         }

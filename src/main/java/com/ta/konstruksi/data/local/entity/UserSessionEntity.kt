@@ -8,7 +8,7 @@ import androidx.room.PrimaryKey
 data class UserSessionEntity(
     @PrimaryKey val id_mandor: String,
     val nama: String,
-    val email: String,
+    val username: String,
     val role: String,
     val auth_token: String,
     val last_sync_timestamp: Long = 0L,

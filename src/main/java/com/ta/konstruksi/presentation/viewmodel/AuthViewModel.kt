@@ -40,11 +40,11 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    fun login(email: String, password: String) {
+    fun login(username: String, password: String) {
         viewModelScope.launch {
             _uiState.value = AuthUiState.Loading
             try {
-                loginUseCase(email, password).fold(
+                loginUseCase(username, password).fold(
                     onSuccess = { _uiState.value = AuthUiState.Success(it) },
                     onFailure = { _uiState.value = AuthUiState.Error(it.message ?: "Login gagal") }
                 )

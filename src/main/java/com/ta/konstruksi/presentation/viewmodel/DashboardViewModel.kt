@@ -10,6 +10,7 @@ import com.ta.konstruksi.domain.repository.MutasiRepository
 import com.ta.konstruksi.domain.repository.TransferRepository
 import com.ta.konstruksi.sync.SyncScheduler
 import com.ta.konstruksi.util.JenisMutasi
+import com.ta.konstruksi.util.StatusTransfer
 import com.ta.konstruksi.util.SyncStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,7 +35,9 @@ data class DashboardUiState(
     val lowStockItems: List<MasterKatalog> = emptyList(),
     val pendingCount: Int = 0,
     val pendingItems: List<PendingSyncItem> = emptyList(),
-    val todayMutasiCount: Int = 0
+    val todayMutasiCount: Int = 0,
+    // Aset IN_TRANSIT menuju proyek aktif yang menunggu konfirmasi penerimaan
+    val incomingTransferCount: Int = 0
 )
 
 @HiltViewModel
@@ -92,7 +95,13 @@ class DashboardViewModel @Inject constructor(
             set(java.util.Calendar.MILLISECOND, 0)
         }.timeInMillis
         val todayCount = mutasiList.count { it.local_timestamp >= todayStart }
-        DashboardUiState(session, lowStock, pendingItems.size, pendingItems, todayCount)
+        // Transfer masuk menunggu konfirmasi — predikat sama dengan TransferMasukScreen.
+        val proyekAktif = session?.nama_proyek?.takeIf { it.isNotBlank() }
+        val incomingCount = if (proyekAktif == null) 0 else transferList.count {
+            it.status_transfer == StatusTransfer.IN_TRANSIT &&
+                it.proyek_tujuan.trim().equals(proyekAktif, ignoreCase = true)
+        }
+        DashboardUiState(session, lowStock, pendingItems.size, pendingItems, todayCount, incomingCount)
     }.onEach { _initialLoaded.value = true }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), DashboardUiState())
 

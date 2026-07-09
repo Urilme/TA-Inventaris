@@ -32,6 +32,9 @@ class KatalogRepositoryImpl @Inject constructor(
     override suspend fun getKatalogBySku(skuId: String): MasterKatalog? =
         katalogDao.getKatalogBySku(skuId)?.toDomain()
 
+    override suspend fun findByProyekAndNama(idProyek: String, nama: String): MasterKatalog? =
+        katalogDao.findByProyekAndNama(idProyek, nama)?.toDomain()
+
     // Barang baru distempel proyek aktif agar muncul di katalog proyek ini.
     override suspend fun upsertKatalog(item: MasterKatalog) {
         val stamped = if (item.id_proyek.isBlank()) item.copy(id_proyek = proyekAktif()) else item

@@ -50,6 +50,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ta.konstruksi.presentation.ui.component.AppDropdownItem
 import com.ta.konstruksi.presentation.ui.component.AppDropdownMenu
+import com.ta.konstruksi.presentation.ui.component.ConfirmActionDialog
+import com.ta.konstruksi.presentation.ui.component.ConfirmInfoRow
 import com.ta.konstruksi.presentation.ui.component.NetworkBadge
 import com.ta.konstruksi.presentation.ui.theme.AmberBg
 import com.ta.konstruksi.presentation.ui.theme.AmberBorder
@@ -86,6 +88,7 @@ fun TambahKatalogScreen(
     val generatedSku = remember { UuidGenerator.generateSkuId() }
     val snackbarHostState = remember { SnackbarHostState() }
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    var showConfirm by remember { mutableStateOf(false) }
 
     // Tunggu hasil simpan: kembali hanya jika sukses, tampilkan error bila gagal
     LaunchedEffect(uiState) {
@@ -94,7 +97,10 @@ fun TambahKatalogScreen(
                 viewModel.resetUiState()
                 onBack()
             }
-            is KatalogUiState.Error -> snackbarHostState.showSnackbar(s.message)
+            is KatalogUiState.Error -> {
+                showConfirm = false
+                snackbarHostState.showSnackbar(s.message)
+            }
             else -> {}
         }
     }
@@ -247,9 +253,7 @@ fun TambahKatalogScreen(
                 Box(
                     modifier = Modifier.fillMaxWidth().height(62.dp).clip(RoundedCornerShape(14.dp))
                         .background(if (canSave || isSaving) Navy else Color(0xFFB0BEC5))
-                        .clickable(enabled = canSave) {
-                            viewModel.tambahKatalog(kategori, namaBarang, satuan, 0, stokMinimum, generatedSku)
-                        },
+                        .clickable(enabled = canSave) { showConfirm = true },
                     contentAlignment = Alignment.Center
                 ) {
                     if (isSaving) {
@@ -261,6 +265,37 @@ fun TambahKatalogScreen(
                             Text("TAMBAH KE KATALOG", fontSize = 16.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp, color = Color.White)
                         }
                     }
+                }
+
+                // Guard konfirmasi sebelum barang baru ditambahkan ke katalog
+                if (showConfirm) {
+                    ConfirmActionDialog(
+                        icon = Icons.Default.AddBox,
+                        accent = Navy,
+                        accentBg = InfoBg,
+                        title = "Tambah Barang Baru?",
+                        subtitle = "Pastikan belum ada di katalog",
+                        message = "Cek dulu agar tidak ada duplikat. Barang baru dimulai dengan stok 0 — tambahkan stok lewat Mutasi Masuk.",
+                        confirmLabel = "Ya, Tambah",
+                        isProcessing = isSaving,
+                        onDismiss = { showConfirm = false },
+                        onConfirm = {
+                            viewModel.tambahKatalog(kategori, namaBarang, satuan, 0, stokMinimum, generatedSku)
+                        },
+                        content = {
+                            Column(
+                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
+                                    .background(InfoBg).border(1.5.dp, InfoBorder, RoundedCornerShape(14.dp))
+                                    .padding(horizontal = 14.dp, vertical = 6.dp)
+                            ) {
+                                ConfirmInfoRow("Nama", namaBarang)
+                                ConfirmInfoRow("Kategori", KategoriBarang.label(kategori))
+                                ConfirmInfoRow("Satuan", satuan)
+                                ConfirmInfoRow("Stok Awal", "0 $satuan")
+                                ConfirmInfoRow("Stok Minimum", if (stokMinimum > 0) "$stokMinimum $satuan" else "Tidak diatur")
+                            }
+                        }
+                    )
                 }
             }
         }

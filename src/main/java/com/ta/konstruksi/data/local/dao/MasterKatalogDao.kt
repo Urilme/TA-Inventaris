@@ -13,6 +13,11 @@ interface MasterKatalogDao {
     @Query("SELECT * FROM master_katalog WHERE sku_id = :skuId")
     suspend fun getKatalogBySku(skuId: String): MasterKatalogEntity?
 
+    // Cari barang sejenis (nama sama) di suatu proyek — dipakai saat konfirmasi transfer masuk
+    // untuk menambah stok ke item yang sudah ada, bukan membuat duplikat.
+    @Query("SELECT * FROM master_katalog WHERE id_proyek = :idProyek AND nama_barang = :nama LIMIT 1")
+    suspend fun findByProyekAndNama(idProyek: String, nama: String): MasterKatalogEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(item: MasterKatalogEntity)
 

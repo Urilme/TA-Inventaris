@@ -11,6 +11,7 @@ import com.ta.konstruksi.data.remote.FirestoreDataSource
 import com.ta.konstruksi.domain.model.UserSession
 import com.ta.konstruksi.domain.repository.AuthRepository
 import com.ta.konstruksi.util.Constants
+import com.ta.konstruksi.util.usernameToEmail
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 
@@ -19,10 +20,12 @@ import javax.inject.Inject
  *
  * - Daring: kredensial diverifikasi ke FirebaseAuth, lalu sesi disimpan ke Room ([UserSessionDao])
  *   agar aplikasi tetap bisa dipakai saat luring.
- * - Luring: bila sudah pernah login (sesi tersimpan untuk email yang sama), pengguna tetap
+ * - Luring: bila sudah pernah login (sesi tersimpan untuk username yang sama), pengguna tetap
  *   dapat masuk memakai sesi lokal. Login PERTAMA tetap memerlukan internet.
  *
- * Akun mandor dibuat oleh admin melalui Firebase Console (tidak ada pendaftaran mandiri di app).
+ * Login berbasis USERNAME: mandor tidak punya email nyata. Username diubah jadi email sintetis
+ * "<username>@skn.app" ([usernameToEmail]) sebelum dikirim ke Firebase, karena Firebase Auth
+ * hanya menyediakan provider email/password. Akun mandor dibuat oleh admin (di luar app).
  */
 class AuthRepositoryImpl @Inject constructor(
     private val userSessionDao: UserSessionDao,
@@ -30,38 +33,43 @@ class AuthRepositoryImpl @Inject constructor(
     private val firestore: FirestoreDataSource
 ) : AuthRepository {
 
-    override suspend fun login(email: String, password: String): Result<UserSession> {
-        val emailBersih = email.trim()
-        if (emailBersih.isBlank() || password.isBlank()) {
-            return Result.failure(IllegalArgumentException("Email dan kata sandi tidak boleh kosong"))
+    override suspend fun login(username: String, password: String): Result<UserSession> {
+        val usernameBersih = username.trim().lowercase()
+        if (usernameBersih.isBlank() || password.isBlank()) {
+            return Result.failure(IllegalArgumentException("Username dan kata sandi tidak boleh kosong"))
+        }
+        // Validasi longgar: username tidak boleh mengandung '@' atau spasi (bukan email, satu kata).
+        if (usernameBersih.contains('@') || usernameBersih.any { it.isWhitespace() }) {
+            return Result.failure(IllegalArgumentException("Username tidak valid"))
         }
 
+        val email = usernameToEmail(usernameBersih)
         return try {
-            val hasil = firebaseAuth.signInWithEmailAndPassword(emailBersih, password).await()
+            val hasil = firebaseAuth.signInWithEmailAndPassword(email, password).await()
             val user = hasil.user
                 ?: return Result.failure(IllegalStateException("Autentikasi gagal, coba lagi"))
 
             val token = runCatching { user.getIdToken(false).await().token }.getOrNull().orEmpty()
-            val session = buatSesiDari(user, emailBersih, token)
+            val session = buatSesiDari(user, usernameBersih, token)
             userSessionDao.upsert(session.toEntity())
             Result.success(session)
         } catch (e: FirebaseAuthInvalidUserException) {
             // Akun tidak terdaftar / dinonaktifkan
             Result.failure(Exception("Akun tidak ditemukan. Hubungi admin untuk pendaftaran."))
         } catch (e: FirebaseAuthInvalidCredentialsException) {
-            Result.failure(Exception("Email atau kata sandi salah"))
+            Result.failure(Exception("Username atau kata sandi salah"))
         } catch (e: FirebaseNetworkException) {
-            // Luring: izinkan masuk hanya bila sesi tersimpan cocok dengan email yang dimasukkan
-            loginLuring(emailBersih)
+            // Luring: izinkan masuk hanya bila sesi tersimpan cocok dengan username yang dimasukkan
+            loginLuring(usernameBersih)
         } catch (e: Exception) {
             Result.failure(Exception(e.message ?: "Login gagal"))
         }
     }
 
-    /** Fallback luring: pakai sesi lokal bila email cocok dengan sesi terakhir yang tersimpan. */
-    private suspend fun loginLuring(email: String): Result<UserSession> {
+    /** Fallback luring: pakai sesi lokal bila username cocok dengan sesi terakhir yang tersimpan. */
+    private suspend fun loginLuring(username: String): Result<UserSession> {
         val lokal = userSessionDao.getSession()
-        return if (lokal != null && lokal.email.equals(email, ignoreCase = true)) {
+        return if (lokal != null && lokal.username.equals(username, ignoreCase = true)) {
             Result.success(lokal.toDomain())
         } else {
             Result.failure(Exception("Tidak ada koneksi. Login pertama memerlukan internet."))
@@ -84,9 +92,10 @@ class AuthRepositoryImpl @Inject constructor(
      * diambil dari dokumen Firestore `users/{uid}` yang di-provision oleh admin/website.
      * Bila dokumen belum ada, dipakai nilai turunan/fallback agar login tetap berhasil.
      * `last_sync_timestamp` & proyek sebelumnya dipertahankan bila sesi lama milik uid yang sama.
+     * Username diturunkan dari bagian sebelum '@' pada email sintetis Firebase.
      */
-    private suspend fun buatSesiDari(user: FirebaseUser, emailInput: String, token: String): UserSession {
-        val email = user.email ?: emailInput
+    private suspend fun buatSesiDari(user: FirebaseUser, usernameInput: String, token: String): UserSession {
+        val username = user.email?.substringBefore("@")?.takeIf { it.isNotBlank() } ?: usernameInput
         val existing = userSessionDao.getSession()?.takeIf { it.id_mandor == user.uid }
         val lastSync = existing?.last_sync_timestamp ?: 0L
 
@@ -95,7 +104,7 @@ class AuthRepositoryImpl @Inject constructor(
 
         val nama = profil?.nama?.takeIf { it.isNotBlank() }
             ?: user.displayName?.takeIf { it.isNotBlank() }
-            ?: namaDariEmail(email)
+            ?: namaDariUsername(username)
         val role = profil?.role?.takeIf { it.isNotBlank() } ?: existing?.role ?: "mandor"
         val idProyek = profil?.idProyek?.takeIf { it.isNotBlank() }
             ?: existing?.id_proyek?.takeIf { it.isNotBlank() }
@@ -107,7 +116,7 @@ class AuthRepositoryImpl @Inject constructor(
         return UserSession(
             id_mandor = user.uid,
             nama = nama,
-            email = email,
+            username = username,
             role = role,
             auth_token = token,
             last_sync_timestamp = lastSync,
@@ -116,8 +125,8 @@ class AuthRepositoryImpl @Inject constructor(
         )
     }
 
-    private fun namaDariEmail(email: String): String =
-        email.substringBefore("@")
+    private fun namaDariUsername(username: String): String =
+        username
             .replace(Regex("[._]"), " ")
             .split(" ")
             .filter { it.isNotBlank() }
@@ -127,7 +136,7 @@ class AuthRepositoryImpl @Inject constructor(
     private fun UserSession.toEntity() = UserSessionEntity(
         id_mandor = id_mandor,
         nama = nama,
-        email = email,
+        username = username,
         role = role,
         auth_token = auth_token,
         last_sync_timestamp = last_sync_timestamp,
@@ -138,7 +147,7 @@ class AuthRepositoryImpl @Inject constructor(
     private fun UserSessionEntity.toDomain() = UserSession(
         id_mandor = id_mandor,
         nama = nama,
-        email = email,
+        username = username,
         role = role,
         auth_token = auth_token,
         last_sync_timestamp = last_sync_timestamp,

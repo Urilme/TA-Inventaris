@@ -1,5 +1,6 @@
 package com.ta.konstruksi.data.local.entity
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.PrimaryKey
@@ -16,6 +17,10 @@ import androidx.room.PrimaryKey
 data class TransferProyekEntity(
     @PrimaryKey val id_transfer: String,
     val sku_id: String,
+    // Snapshot barang (defaultValue harus cocok dgn MIGRATION_5_6)
+    @ColumnInfo(defaultValue = "") val nama_barang: String = "",
+    @ColumnInfo(defaultValue = "") val kategori: String = "",
+    @ColumnInfo(defaultValue = "") val satuan: String = "",
     val proyek_asal: String,
     val proyek_tujuan: String,
     val jumlah: Int,

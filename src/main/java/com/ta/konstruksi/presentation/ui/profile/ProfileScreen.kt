@@ -22,17 +22,19 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,9 +46,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.ta.konstruksi.presentation.ui.component.ConfirmActionDialog
 import com.ta.konstruksi.presentation.ui.theme.AppBackground
 import com.ta.konstruksi.presentation.ui.theme.BorderLight
 import com.ta.konstruksi.presentation.ui.theme.Navy
+import com.ta.konstruksi.presentation.ui.theme.RedBg
 import com.ta.konstruksi.presentation.ui.theme.RedBorder
 import com.ta.konstruksi.presentation.ui.theme.RedDark
 import com.ta.konstruksi.presentation.ui.theme.RedMain
@@ -76,6 +80,7 @@ fun ProfileScreen(
     val nama = session?.nama?.takeIf { it.isNotBlank() } ?: "Mandor"
     val inisial = nama.trim().split(" ").filter { it.isNotBlank() }
         .take(2).joinToString("") { it.first().uppercase() }.ifBlank { "M" }
+    var showLogoutConfirm by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize().background(AppBackground)) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -147,7 +152,7 @@ fun ProfileScreen(
                 Spacer(Modifier.height(14.dp))
 
                 InfoCard(title = "Akun") {
-                    InfoRow(icon = Icons.Default.Email, label = "Email", value = session?.email ?: "-")
+                    InfoRow(icon = Icons.Default.Person, label = "Username", value = session?.username ?: "-")
                 }
 
                 Spacer(Modifier.height(14.dp))
@@ -180,7 +185,7 @@ fun ProfileScreen(
                         .clip(RoundedCornerShape(14.dp))
                         .background(Color.White)
                         .border(1.5.dp, RedBorder, RoundedCornerShape(14.dp))
-                        .clickable { viewModel.logout(onLoggedOut) }
+                        .clickable { showLogoutConfirm = true }
                         .padding(vertical = 15.dp),
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
@@ -192,6 +197,26 @@ fun ProfileScreen(
 
                 Spacer(Modifier.height(24.dp))
             }
+        }
+
+        // Guard konfirmasi sebelum sesi lokal dihapus
+        if (showLogoutConfirm) {
+            ConfirmActionDialog(
+                icon = Icons.AutoMirrored.Filled.Logout,
+                accent = RedMain,
+                accentBg = RedBg,
+                title = "Keluar dari Akun?",
+                subtitle = null,
+                message = "Sesi lokal akan dihapus. Untuk masuk kembali Anda perlu login ulang, dan login pertama setelah keluar memerlukan koneksi internet.",
+                confirmLabel = "Ya, Keluar",
+                confirmColor = RedMain,
+                confirmIcon = Icons.AutoMirrored.Filled.Logout,
+                onDismiss = { showLogoutConfirm = false },
+                onConfirm = {
+                    showLogoutConfirm = false
+                    viewModel.logout(onLoggedOut)
+                }
+            )
         }
     }
 }

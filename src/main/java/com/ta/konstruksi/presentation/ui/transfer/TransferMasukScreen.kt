@@ -139,7 +139,8 @@ fun TransferMasukScreen(
                     items(incomingTransfers) { transfer ->
                         TransferMasukCard(
                             transfer = transfer,
-                            namaBarang = namaBySku[transfer.sku_id] ?: "Barang tidak dikenal",
+                            // Utamakan snapshot nama pada transfer; fallback ke katalog lokal
+                            namaBarang = transfer.nama_barang.ifBlank { namaBySku[transfer.sku_id] ?: "Barang tidak dikenal" },
                             onClick = { navController.navigate(Screen.TransferDetail.createRoute(transfer.id_transfer)) }
                         )
                     }

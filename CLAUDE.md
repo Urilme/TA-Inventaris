@@ -80,7 +80,8 @@ data class UserSession(
     val nama: String,
     val email: String,
     val role: String,                         // "mandor" | "admin"
-    val auth_token: String,
+    val auth_token: String,                   // Firebase ID token — di-reset tiap login online,
+                                              // dipertahankan saat login offline; rekam jejak saja
     val last_sync_timestamp: Long = 0L,       // epoch millis, untuk delta sync
     val id_proyek: String = "",               // proyek yang ditugaskan (dari Firestore users/{uid})
     val nama_proyek: String = ""              // nama tampilan proyek — ditampilkan di Dashboard
@@ -182,7 +183,11 @@ Urutan berdasarkan **Plan by Feature (FDD)** — implementasi dari pondasi ke at
 ### F1 — Autentikasi & Manajemen Sesi Offline ⭐ PRIORITAS 1
 - Firebase Auth login (email/password)
 - Simpan sesi ke Room (`UserSession`) untuk akses offline
-- Token refresh otomatis saat online
+- **Siklus `auth_token`**: diambil segar (`getIdToken(false)`) **hanya saat login online** dan
+  **menimpa** baris sesi (di-reset tiap login ulang online). Saat **offline** (`loginLuring`),
+  sesi lokal dipakai ulang apa adanya — `auth_token` lama **dipertahankan**, tidak diperbarui.
+  Catatan: `auth_token` hanya disimpan sebagai rekam jejak; panggilan Firestore memakai sesi
+  internal SDK `FirebaseAuth`, bukan field ini (jadi token stale tidak memengaruhi fungsi).
 - Logout bersihkan sesi lokal
 - **File utama**: `AuthViewModel`, `AuthRepository`, `LoginScreen`
 

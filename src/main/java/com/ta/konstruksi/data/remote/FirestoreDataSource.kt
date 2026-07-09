@@ -154,6 +154,9 @@ class FirestoreDataSource @Inject constructor(
     private fun TransferProyekEntity.toMap(updatedBy: String): Map<String, Any?> = mapOf(
         "id_transfer" to id_transfer,
         "sku_id" to sku_id,
+        "nama_barang" to nama_barang,
+        "kategori" to kategori,
+        "satuan" to satuan,
         "proyek_asal" to proyek_asal,
         "proyek_tujuan" to proyek_tujuan,
         "jumlah" to jumlah,

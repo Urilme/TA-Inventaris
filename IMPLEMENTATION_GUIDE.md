@@ -111,10 +111,28 @@ terpisah**. Aplikasi mobile hanya **membaca** penugasan tersebut, tidak mengubah
   - Navigasi ke Dashboard saat state = `AuthUiState.Success`
 - [x] Cek sesi tersimpan saat app launch: jika ada sesi valid di Room → skip LoginScreen (`AppNavigation` + `AuthViewModel.startupLoggedIn`)
 
+### Siklus `auth_token` (Sesi)
+Field `auth_token` di `UserSession`/`UserSessionEntity` menyimpan **Firebase ID token**. Perilakunya:
+
+| Skenario | Alur di `AuthRepositoryImpl` | Efek pada `auth_token` |
+|---|---|---|
+| **Login online** | `login()` → `user.getIdToken(false)` → `userSessionDao.upsert(session)` | **Di-reset**: token segar diambil & **menimpa** baris sesi tiap login ulang online |
+| **Login offline** | `FirebaseNetworkException` → `loginLuring(email)` → kembalikan `userSessionDao.getSession()` apa adanya | **Dipertahankan**: `auth_token` lama dipakai ulang, tidak diperbarui |
+| **Sesi lama uid sama** | `buatSesiDari()` mempertahankan `last_sync_timestamp` & proyek dari sesi lama | `auth_token` tetap ditimpa token baru (hanya saat online) |
+
+> **Catatan jujur:** `auth_token` yang tersimpan **tidak pernah dibaca** untuk memanggil backend —
+> hanya di-*tulis* saat login lalu dipetakan entity↔domain. Autentikasi ke Firestore memakai sesi
+> internal SDK `FirebaseAuth` (`firebaseAuth.currentUser`), **bukan** field ini. Jadi token yang stale
+> **tidak** memengaruhi fungsi apa pun; field ini berfungsi sebagai rekam jejak/snapshot sesi.
+> "Token refresh otomatis saat online" berarti token diambil ulang **pada saat login**, bukan
+> pembaruan berkelanjutan di latar belakang.
+
 ### Kriteria Selesai
 - Login dengan kredensial valid → masuk ke Dashboard ✓
 - Login dengan kredensial salah → tampilkan pesan error ✓
 - Tidak ada internet → sesi lokal dari Room masih bisa digunakan ✓
+- Login ulang online → `auth_token` diperbarui (di-reset) dengan token segar ✓
+- Login offline → `auth_token` lama dipertahankan, sesi tetap dipakai ✓
 - Logout → sesi Room terhapus, kembali ke LoginScreen ✓
 
 ---
@@ -253,8 +271,32 @@ TransferScreen                     TransferMasukScreen
   → status = IN_TRANSIT              → lihat detail transfer
                                      → tap "Konfirmasi Terima"
                                      → status = SELESAI
-                                     → stok tujuan bertambah
+                                     → barang MASUK ke katalog penerima
 ```
+
+> **Akses Transfer Masuk:** entri navigasi ada di ikon **kotak-masuk (MoveToInbox)** pada header
+> `TransferScreen` (di samping badge ONLINE) → `Screen.TransferMasuk.route`.
+
+### Transfer Self-Describing + Perpindahan Katalog
+`TransferProyekEntity` membawa **snapshot** `nama_barang`, `kategori`, `satuan` (Room v6,
+`MIGRATION_5_6`) sehingga penerima bisa menampilkan & memindahkan barang **tanpa** perlu katalog
+proyek asal. Saat konfirmasi, `TransferViewModel.confirmTransfer()`:
+- cari item sejenis di proyek penerima (`findByProyekAndNama`) → jika ada, tambah stok;
+  jika belum, **buat entri katalog baru** (`UuidGenerator.generateSkuId()`, `id_proyek` = proyek penerima).
+- barang benar-benar **pindah**: stok proyek asal berkurang, entri baru muncul di katalog penerima.
+
+> **Batasan jujur:** app belum menarik (`pullTransfer`) transfer dari Firestore — hanya katalog &
+> registri proyek. Uji lintas-2-perangkat via cloud karena itu belum jalan; uji end-to-end dilakukan
+> **single-device dengan login bergantian** (tabel Room transfer/katalog tidak dihapus saat logout).
+> Peningkatan lanjutan opsional: implementasi `pullTransfer` agar penerima mengunduh transfer masuk.
+
+### Hasil Uji End-to-End (single-device, login bergantian)
+Transfer **Bor Listrik Bosch GBM 13 RE** ×2 dari PRJ-001 (Proyek Tol Trans-Sumatera Seksi 2)
+ke PRJ-002 (Pembangunan Jembatan Musi VI), dikonfirmasi oleh `budi@skn.com`:
+- `transfer_proyek`: `status_transfer = SELESAI`, snapshot nama/kategori/satuan terisi ✓
+- `master_katalog` PRJ-001 (pengirim): stok Bor Listrik 8 → **6** ✓
+- `master_katalog` PRJ-002 (penerima): **baris baru** Bor Listrik, stok **2**, TERSINKRONISASI ✓
+- Penerima melihat **nama asli** di Transfer Masuk (bukan "Barang tidak dikenal") ✓
 
 ### Checklist Implementasi
 - [x] Implementasi `TransferRepositoryImpl`:
@@ -275,15 +317,14 @@ TransferScreen                     TransferMasukScreen
   - Tap item → navigasi ke `TransferDetailScreen`
 - [x] Implementasi `TransferDetailScreen.kt` — **konfirmasi penerimaan**:
   - Tampil detail lengkap transfer (barang, asal, tujuan, jumlah, status)
-  - Tombol "Konfirmasi Terima" → `TransferViewModel.konfirmasiTerima(idTransfer)` → status `SELESAI`
-  - Tombol "Batalkan" → status `DIBATALKAN`
+  - Tombol "Konfirmasi Terima" → `TransferViewModel.confirmTransfer(transfer)` → barang masuk katalog penerima, status `SELESAI`
+  - Tombol "Laporkan Masalah" (placeholder untuk pembatalan/eskalasi)
   - UI reaktif terhadap `uiState` (loading/sukses/error)
 
 ### Kriteria Selesai
 - Transfer dibuat → status `IN_TRANSIT`, stok proyek asal berkurang ✓
 - Muncul di `TransferMasukScreen` sisi penerima ✓
-- Konfirmasi penerimaan → status `SELESAI`, stok proyek tujuan bertambah ✓
-- Batalkan transfer → status `DIBATALKAN` ✓
+- Konfirmasi penerimaan → status `SELESAI`, barang masuk ke katalog proyek tujuan ✓
 - Data tersimpan offline, `sync_status = PENDING` ✓
 
 ---

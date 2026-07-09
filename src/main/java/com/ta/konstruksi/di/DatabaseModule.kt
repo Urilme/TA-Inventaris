@@ -117,11 +117,64 @@ object DatabaseModule {
         }
     }
 
+    /**
+     * Migrasi v5 → v6: transfer_proyek jadi self-describing — snapshot nama_barang/kategori/satuan
+     * agar penerima bisa menampilkan & memindahkan barang ke katalognya tanpa katalog proyek asal.
+     * defaultValue harus cocok dgn @ColumnInfo(defaultValue = "") di TransferProyekEntity.
+     */
+    val MIGRATION_5_6 = object : Migration(5, 6) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE transfer_proyek ADD COLUMN nama_barang TEXT NOT NULL DEFAULT ''")
+            db.execSQL("ALTER TABLE transfer_proyek ADD COLUMN kategori TEXT NOT NULL DEFAULT ''")
+            db.execSQL("ALTER TABLE transfer_proyek ADD COLUMN satuan TEXT NOT NULL DEFAULT ''")
+        }
+    }
+
+    /**
+     * Migrasi v6 → v7: login berbasis username — kolom user_session.email → username.
+     * SQLite pada rentang Android target tidak menjamin ALTER TABLE DROP/RENAME COLUMN,
+     * jadi tabel direkreasi. Nilai username disalin dari bagian sebelum '@' pada email lama
+     * agar sesi luring yang sudah tersimpan tetap cocok saat login ulang.
+     * Struktur user_session_new harus persis sama dengan UserSessionEntity (v7).
+     */
+    val MIGRATION_6_7 = object : Migration(6, 7) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE user_session_new (
+                    id_mandor TEXT NOT NULL,
+                    nama TEXT NOT NULL,
+                    username TEXT NOT NULL,
+                    role TEXT NOT NULL,
+                    auth_token TEXT NOT NULL,
+                    last_sync_timestamp INTEGER NOT NULL,
+                    id_proyek TEXT NOT NULL DEFAULT '',
+                    nama_proyek TEXT NOT NULL DEFAULT '',
+                    PRIMARY KEY(id_mandor)
+                )
+                """.trimIndent()
+            )
+            db.execSQL(
+                """
+                INSERT INTO user_session_new (
+                    id_mandor, nama, username, role, auth_token, last_sync_timestamp, id_proyek, nama_proyek
+                )
+                SELECT id_mandor, nama,
+                    CASE WHEN instr(email, '@') > 0 THEN substr(email, 1, instr(email, '@') - 1) ELSE email END,
+                    role, auth_token, last_sync_timestamp, id_proyek, nama_proyek
+                FROM user_session
+                """.trimIndent()
+            )
+            db.execSQL("DROP TABLE user_session")
+            db.execSQL("ALTER TABLE user_session_new RENAME TO user_session")
+        }
+    }
+
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): KonstruksiDatabase =
         Room.databaseBuilder(context, KonstruksiDatabase::class.java, Constants.DATABASE_NAME)
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
             .build()
 
     @Provides fun provideUserSessionDao(db: KonstruksiDatabase): UserSessionDao = db.userSessionDao()

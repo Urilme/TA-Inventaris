@@ -20,8 +20,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CloudOff
-import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
@@ -75,7 +75,7 @@ fun LoginScreen(
     viewModel: AuthViewModel = hiltViewModel()
 ) {
         val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    var email by remember { mutableStateOf("") }
+    var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
@@ -117,21 +117,21 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(40.dp))
 
-            // Email field
-            Text("Email", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = TextPrimary, modifier = Modifier.fillMaxWidth())
+            // Username field
+            Text("Username", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = TextPrimary, modifier = Modifier.fillMaxWidth())
             Spacer(modifier = Modifier.height(8.dp))
             OutlinedTextField(
-                value = email,
-                onValueChange = { email = it },
+                value = username,
+                onValueChange = { username = it },
                 modifier = Modifier.fillMaxWidth().height(58.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = Navy, unfocusedBorderColor = BorderInput,
                     focusedContainerColor = Color.White, unfocusedContainerColor = Color.White
                 ),
-                leadingIcon = { Icon(Icons.Default.Email, contentDescription = null, tint = TextSubtle, modifier = Modifier.size(22.dp)) },
-                placeholder = { Text("email@domain.com", color = TextSubtle, fontSize = 15.sp) },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
+                leadingIcon = { Icon(Icons.Default.Person, contentDescription = null, tint = TextSubtle, modifier = Modifier.size(22.dp)) },
+                placeholder = { Text("username", color = TextSubtle, fontSize = 15.sp) },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Next),
                 singleLine = true
             )
 
@@ -167,11 +167,11 @@ fun LoginScreen(
 
             // MASUK button
             Button(
-                onClick = { viewModel.login(email, password) },
+                onClick = { viewModel.login(username, password) },
                 modifier = Modifier.fillMaxWidth().height(60.dp),
                 shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Navy),
-                enabled = uiState !is AuthUiState.Loading && email.isNotBlank() && password.isNotBlank()
+                enabled = uiState !is AuthUiState.Loading && username.isNotBlank() && password.isNotBlank()
             ) {
                 if (uiState is AuthUiState.Loading) {
                     CircularProgressIndicator(color = Color.White, modifier = Modifier.size(22.dp), strokeWidth = 2.dp)
