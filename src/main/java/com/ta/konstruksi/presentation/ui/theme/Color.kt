@@ -30,6 +30,11 @@ val GreenBorder = Color(0xFFb6e3c8)
 val GreenText = Color(0xFF0F6B3A)
 val GreenDark = Color(0xFF13351f)
 
+// Kategori aset — pembeda visual per kategori di Katalog
+val KatAlat = Color(0xFF2E6BB8)          // biru — alat/mesin
+val KatBahan = Color(0xFFB5792B)         // oker — material (semen, pasir)
+val KatScaffolding = Color(0xFF4E8D77)   // teal — rangka baja
+
 // KRITIS — red
 val RedMain = Color(0xFFD03A2C)
 val RedDark = Color(0xFFA02519)
