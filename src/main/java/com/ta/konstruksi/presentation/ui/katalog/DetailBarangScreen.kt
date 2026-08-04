@@ -2,6 +2,7 @@ package com.ta.konstruksi.presentation.ui.katalog
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.Inventory
@@ -29,7 +31,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -40,6 +44,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ta.konstruksi.domain.model.LogMutasi
+import com.ta.konstruksi.presentation.ui.component.ConfirmActionDialog
 import com.ta.konstruksi.presentation.ui.component.NetworkBadge
 import com.ta.konstruksi.presentation.ui.component.SyncStatusBadge
 import com.ta.konstruksi.presentation.ui.theme.AmberBg
@@ -52,6 +57,7 @@ import com.ta.konstruksi.presentation.ui.theme.GreenBorder
 import com.ta.konstruksi.presentation.ui.theme.GreenMain
 import com.ta.konstruksi.presentation.ui.theme.Navy
 import com.ta.konstruksi.presentation.ui.theme.RedBg
+import com.ta.konstruksi.presentation.ui.theme.RedBorder
 import com.ta.konstruksi.presentation.ui.theme.RedMain
 import com.ta.konstruksi.presentation.ui.theme.TextSubtle
 import com.ta.konstruksi.presentation.viewmodel.KatalogViewModel
@@ -80,6 +86,7 @@ fun DetailBarangScreen(
         .filterIsInstance<RiwayatItem.Mutasi>()
         .map { it.data }
         .filter { it.sku_id == skuId }
+    var showHapus by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize().background(AppBackground)) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -166,7 +173,45 @@ fun DetailBarangScreen(
                         items(mutasiBarang) { m -> MutasiRingkasCard(m) }
                     }
 
+                    // Zona bahaya — hapus barang dari katalog (butuh konfirmasi)
+                    item {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp).height(54.dp)
+                                .clip(RoundedCornerShape(14.dp))
+                                .border(1.5.dp, RedBorder, RoundedCornerShape(14.dp)).background(RedBg)
+                                .clickable { showHapus = true },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.DeleteOutline, contentDescription = null, tint = RedMain, modifier = Modifier.size(22.dp))
+                                Spacer(Modifier.width(10.dp))
+                                Text("Hapus Barang dari Katalog", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = RedMain)
+                            }
+                        }
+                    }
+
                     item { Spacer(Modifier.height(8.dp)) }
+                }
+
+                // Guard hapus — barang dikeluarkan dari katalog lokal, lalu kembali ke daftar
+                if (showHapus) {
+                    ConfirmActionDialog(
+                        icon = Icons.Default.DeleteOutline,
+                        accent = RedMain,
+                        accentBg = RedBg,
+                        title = "Hapus Barang",
+                        subtitle = item.nama_barang,
+                        message = "Barang ini akan dihapus dari katalog. Riwayat mutasi yang sudah tercatat tetap tersimpan. Tindakan ini tidak bisa diurungkan.",
+                        confirmLabel = "Ya, Hapus",
+                        confirmColor = RedMain,
+                        confirmIcon = Icons.Default.DeleteOutline,
+                        onDismiss = { showHapus = false },
+                        onConfirm = {
+                            showHapus = false
+                            katalogViewModel.hapusKatalog(item.sku_id)
+                            onBack()
+                        }
+                    )
                 }
             }
         }

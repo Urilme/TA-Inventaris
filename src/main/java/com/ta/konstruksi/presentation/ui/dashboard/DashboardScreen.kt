@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -22,10 +24,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.MoveToInbox
 import androidx.compose.material.icons.filled.Sync
@@ -53,13 +55,20 @@ import com.ta.konstruksi.presentation.navigation.Screen
 import com.ta.konstruksi.presentation.ui.component.AppBottomBar
 import com.ta.konstruksi.presentation.ui.component.DashboardSkeleton
 import com.ta.konstruksi.presentation.ui.component.NetworkBadge
+import com.ta.konstruksi.presentation.ui.component.StokHealth
+import com.ta.konstruksi.presentation.ui.component.kategoriColor
+import com.ta.konstruksi.presentation.ui.component.kategoriIcon
+import com.ta.konstruksi.presentation.ui.component.stokHealth
 import com.ta.konstruksi.presentation.ui.theme.AmberBg
 import com.ta.konstruksi.presentation.ui.theme.AmberBorder
 import com.ta.konstruksi.presentation.ui.theme.AmberMain
 import com.ta.konstruksi.presentation.ui.theme.AmberText
 import com.ta.konstruksi.presentation.ui.theme.AppBackground
 import com.ta.konstruksi.presentation.ui.theme.BorderLight
+import com.ta.konstruksi.presentation.ui.theme.GreenBg
+import com.ta.konstruksi.presentation.ui.theme.GreenBorder
 import com.ta.konstruksi.presentation.ui.theme.GreenMain
+import com.ta.konstruksi.presentation.ui.theme.GreenText
 import com.ta.konstruksi.presentation.ui.theme.InfoBg
 import com.ta.konstruksi.presentation.ui.theme.InfoBorder
 import com.ta.konstruksi.presentation.ui.theme.Navy
@@ -165,13 +174,15 @@ fun DashboardScreen(
                         subtitle = "transaksi tercatat",
                         isWarning = false
                     )
+                    val adaBacklog = state.pendingCount > 0
                     StatCard(
                         modifier = Modifier.weight(1f),
-                        icon = Icons.Default.HourglassEmpty,
+                        icon = if (adaBacklog) Icons.Default.HourglassEmpty else Icons.Default.CheckCircle,
                         label = "MENUNGGU SINKRON",
                         value = state.pendingCount.toString(),
-                        subtitle = "belum terkirim",
-                        isWarning = true
+                        subtitle = if (adaBacklog) "belum terkirim" else "semua tersinkron",
+                        isWarning = adaBacklog,
+                        isPositive = !adaBacklog
                     )
                 }
 
@@ -254,8 +265,8 @@ fun DashboardScreen(
                     }
                 } else {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        state.lowStockItems.forEachIndexed { idx, item ->
-                            LowStockCard(item = item, isCritical = idx == 0)
+                        state.lowStockItems.forEach { item ->
+                            LowStockCard(item = item)
                         }
                     }
                 }
@@ -360,13 +371,15 @@ private fun StatCard(
     label: String,
     value: String,
     subtitle: String,
-    isWarning: Boolean
+    isWarning: Boolean,
+    isPositive: Boolean = false
 ) {
-    val bg = if (isWarning) AmberBg else Color.White
-    val borderColor = if (isWarning) AmberBorder else BorderLight
-    val iconTint = if (isWarning) AmberMain else Navy
-    val labelColor = if (isWarning) AmberText else TextSecondary
-    val valueColor = if (isWarning) AmberMain else Navy
+    val bg = when { isWarning -> AmberBg; isPositive -> GreenBg; else -> Color.White }
+    val borderColor = when { isWarning -> AmberBorder; isPositive -> GreenBorder; else -> BorderLight }
+    val iconTint = when { isWarning -> AmberMain; isPositive -> GreenMain; else -> Navy }
+    val labelColor = when { isWarning -> AmberText; isPositive -> GreenText; else -> TextSecondary }
+    val valueColor = when { isWarning -> AmberMain; isPositive -> GreenMain; else -> Navy }
+    val subtitleColor = when { isWarning -> Color(0xFFb08742); isPositive -> GreenText; else -> TextSubtle }
 
     Column(
         modifier = modifier
@@ -382,7 +395,7 @@ private fun StatCard(
         }
         Spacer(Modifier.height(8.dp))
         Text(value, fontSize = 46.sp, fontWeight = FontWeight.Bold, color = valueColor, lineHeight = 48.sp)
-        Text(subtitle, fontSize = 12.sp, color = if (isWarning) Color(0xFFb08742) else TextSubtle)
+        Text(subtitle, fontSize = 12.sp, color = subtitleColor)
     }
 }
 
@@ -411,11 +424,11 @@ private fun QuickActionButton(
 }
 
 @Composable
-private fun LowStockCard(item: MasterKatalog, isCritical: Boolean) {
+private fun LowStockCard(item: MasterKatalog) {
+    // Kritis/rendah ditentukan aturan stokHealth() (konsisten dgn Katalog), bukan posisi urutan.
+    val isCritical = stokHealth(item) == StokHealth.KRITIS
+    val catColor = kategoriColor(item.kategori)
     val borderColor = if (isCritical) RedBorder else AmberBorder
-    val leftBorderColor = if (isCritical) RedMain else AmberMain
-    val iconBg = if (isCritical) RedBg else AmberBg
-    val iconTint = if (isCritical) RedMain else AmberMain
     val valueColor = if (isCritical) RedMain else AmberMain
     val badgeText = if (isCritical) "KRITIS" else "RENDAH"
     val badgeColor = if (isCritical) RedDark else AmberText
@@ -423,32 +436,43 @@ private fun LowStockCard(item: MasterKatalog, isCritical: Boolean) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .height(IntrinsicSize.Min)
             .clip(RoundedCornerShape(14.dp))
             .background(Color.White)
-            .border(1.5.dp, borderColor, RoundedCornerShape(14.dp))
-            .padding(12.dp),
+            .border(1.5.dp, borderColor, RoundedCornerShape(14.dp)),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(iconBg),
-            contentAlignment = Alignment.Center
+        // Aksen kategori di tepi kiri — bahasa visual sama dengan Katalog
+        Box(modifier = Modifier.fillMaxHeight().width(4.dp).background(catColor))
+
+        Row(
+            modifier = Modifier.weight(1f).padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(Icons.Default.Inventory, contentDescription = null, tint = iconTint, modifier = Modifier.size(22.dp))
-        }
-        Spacer(Modifier.width(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(item.nama_barang, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Navy)
-            Text(KategoriBarang.label(item.kategori), fontSize = 12.sp, color = TextSubtle)
-        }
-        Column(horizontalAlignment = Alignment.End) {
-            Text(
-                "${item.stok_lokal} ${item.satuan}",
-                fontSize = 24.sp, fontWeight = FontWeight.Bold, color = valueColor, lineHeight = 26.sp
-            )
-            Text(badgeText, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp, color = badgeColor)
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(catColor.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(kategoriIcon(item.kategori), contentDescription = null, tint = catColor, modifier = Modifier.size(22.dp))
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(item.nama_barang, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Navy)
+                Text(
+                    KategoriBarang.label(item.kategori),
+                    fontSize = 12.sp, fontWeight = FontWeight.Medium, color = catColor
+                )
+            }
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    "${item.stok_lokal} ${item.satuan}",
+                    fontSize = 24.sp, fontWeight = FontWeight.Bold, color = valueColor, lineHeight = 26.sp
+                )
+                Text(badgeText, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp, color = badgeColor)
+            }
         }
     }
 }

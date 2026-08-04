@@ -64,7 +64,6 @@ import com.ta.konstruksi.presentation.ui.theme.Navy
 import com.ta.konstruksi.presentation.ui.theme.RedBg
 import com.ta.konstruksi.presentation.ui.theme.RedBorder
 import com.ta.konstruksi.presentation.ui.theme.RedMain
-import com.ta.konstruksi.presentation.ui.theme.TextPrimary
 import com.ta.konstruksi.presentation.ui.theme.TextSubtle
 import com.ta.konstruksi.presentation.viewmodel.TransferUiState
 import com.ta.konstruksi.presentation.viewmodel.TransferViewModel
@@ -87,6 +86,7 @@ fun TransferDetailScreen(
     val transfer = transferList.find { it.id_transfer == idTransfer }
     val katalogItem = transfer?.let { t -> katalogList.find { it.sku_id == t.sku_id } }
     var showConfirm by remember { mutableStateOf(false) }
+    var showBatal by remember { mutableStateOf(false) }
 
     // Kembali hanya setelah konfirmasi benar-benar tersimpan
     LaunchedEffect(uiState) {
@@ -237,17 +237,19 @@ fun TransferDetailScreen(
 
                     Spacer(Modifier.height(12.dp))
 
-                    // Laporkan Masalah button
-                    Box(
-                        modifier = Modifier.fillMaxWidth().height(56.dp).clip(RoundedCornerShape(14.dp))
-                            .border(1.5.dp, BorderLight, RoundedCornerShape(14.dp)).background(Color.Transparent)
-                            .clickable {},
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Flag, null, tint = RedMain, modifier = Modifier.size(22.dp))
-                            Spacer(Modifier.width(10.dp))
-                            Text("Laporkan Masalah", fontSize = 15.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.4.sp, color = TextPrimary)
+                    // Batalkan transfer — hanya relevan selagi masih IN_TRANSIT (belum diterima)
+                    if (transfer.status_transfer == StatusTransfer.IN_TRANSIT) {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().height(56.dp).clip(RoundedCornerShape(14.dp))
+                                .border(1.5.dp, RedBorder, RoundedCornerShape(14.dp)).background(RedBg)
+                                .clickable(enabled = uiState !is TransferUiState.Loading) { showBatal = true },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Flag, null, tint = RedMain, modifier = Modifier.size(22.dp))
+                                Spacer(Modifier.width(10.dp))
+                                Text("Batalkan Transfer", fontSize = 15.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.4.sp, color = RedMain)
+                            }
                         }
                     }
                 }
@@ -276,6 +278,35 @@ fun TransferDetailScreen(
                                 ConfirmInfoRow("Barang", namaBarang)
                                 ConfirmInfoRow("Jumlah", "${transfer.jumlah} $satuan")
                                 ConfirmInfoRow("Dari Proyek", transfer.proyek_asal)
+                            }
+                        }
+                    )
+                }
+
+                // Guard pembatalan — stok dikembalikan ke proyek asal (status → DIBATALKAN)
+                if (showBatal) {
+                    ConfirmActionDialog(
+                        icon = Icons.Default.Flag,
+                        accent = RedMain,
+                        accentBg = RedBg,
+                        title = "Batalkan Transfer",
+                        subtitle = "Aset dikembalikan",
+                        message = "Stok akan dikembalikan ke proyek asal (${transfer.proyek_asal}) dan status transfer menjadi DIBATALKAN. Tindakan ini tidak bisa diurungkan.",
+                        confirmLabel = "Ya, Batalkan",
+                        confirmColor = RedMain,
+                        confirmIcon = Icons.Default.Flag,
+                        isProcessing = uiState is TransferUiState.Loading,
+                        onDismiss = { showBatal = false },
+                        onConfirm = { viewModel.cancelTransfer(transfer) },
+                        content = {
+                            Column(
+                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
+                                    .background(InfoBg).border(1.5.dp, InfoBorder, RoundedCornerShape(14.dp))
+                                    .padding(horizontal = 14.dp, vertical = 6.dp)
+                            ) {
+                                ConfirmInfoRow("Barang", namaBarang)
+                                ConfirmInfoRow("Jumlah", "${transfer.jumlah} $satuan")
+                                ConfirmInfoRow("Kembali ke", transfer.proyek_asal)
                             }
                         }
                     )

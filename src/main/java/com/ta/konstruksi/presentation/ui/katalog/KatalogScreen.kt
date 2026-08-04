@@ -26,10 +26,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Grain
-import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.LocalShipping
@@ -58,6 +55,10 @@ import com.ta.konstruksi.domain.model.MasterKatalog
 import com.ta.konstruksi.presentation.navigation.Screen
 import com.ta.konstruksi.presentation.ui.component.AppBottomBar
 import com.ta.konstruksi.presentation.ui.component.ListSkeleton
+import com.ta.konstruksi.presentation.ui.component.StokHealth
+import com.ta.konstruksi.presentation.ui.component.kategoriColor
+import com.ta.konstruksi.presentation.ui.component.kategoriIcon
+import com.ta.konstruksi.presentation.ui.component.stokHealth
 import com.ta.konstruksi.presentation.ui.theme.AmberBg
 import com.ta.konstruksi.presentation.ui.theme.AmberBorder
 import com.ta.konstruksi.presentation.ui.theme.AmberMain
@@ -66,9 +67,6 @@ import com.ta.konstruksi.presentation.ui.theme.AppBackground
 import com.ta.konstruksi.presentation.ui.theme.BorderLight
 import com.ta.konstruksi.presentation.ui.theme.GreenBg
 import com.ta.konstruksi.presentation.ui.theme.GreenMain
-import com.ta.konstruksi.presentation.ui.theme.KatAlat
-import com.ta.konstruksi.presentation.ui.theme.KatBahan
-import com.ta.konstruksi.presentation.ui.theme.KatScaffolding
 import com.ta.konstruksi.presentation.ui.theme.Navy
 import com.ta.konstruksi.presentation.ui.theme.RedDark
 import com.ta.konstruksi.presentation.ui.theme.RedMain
@@ -314,26 +312,3 @@ private fun CategoryChip(label: String, active: Boolean, dotColor: Color?, onCli
     }
 }
 
-private enum class StokHealth { KRITIS, RENDAH, AMAN }
-
-/** Kesehatan stok berbasis stok_minimum (konsisten dgn peringatan Dashboard). */
-private fun stokHealth(item: MasterKatalog): StokHealth = when {
-    item.stok_minimum <= 0 -> StokHealth.AMAN
-    item.stok_lokal <= item.stok_minimum -> StokHealth.KRITIS
-    item.stok_lokal <= item.stok_minimum * 1.5 -> StokHealth.RENDAH
-    else -> StokHealth.AMAN
-}
-
-private fun kategoriColor(kategori: String): Color = when (kategori) {
-    KategoriBarang.ALAT -> KatAlat
-    KategoriBarang.BAHAN -> KatBahan
-    KategoriBarang.SCAFFOLDING -> KatScaffolding
-    else -> Navy
-}
-
-private fun kategoriIcon(kategori: String): ImageVector = when (kategori) {
-    KategoriBarang.ALAT -> Icons.Default.Build
-    KategoriBarang.BAHAN -> Icons.Default.Grain
-    KategoriBarang.SCAFFOLDING -> Icons.Default.GridView
-    else -> Icons.Default.Inventory
-}

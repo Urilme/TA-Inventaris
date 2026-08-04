@@ -131,5 +131,29 @@ class TransferViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Batalkan transfer yang masih IN_TRANSIT (mis. penerima menolak / salah kirim).
+     * Efeknya kebalikan dari [createTransfer]: stok dikembalikan ke proyek asal dan status
+     * menjadi DIBATALKAN. Hanya berlaku selama transfer belum SELESAI.
+     */
+    fun cancelTransfer(transfer: TransferProyek) {
+        viewModelScope.launch {
+            if (transfer.status_transfer != StatusTransfer.IN_TRANSIT) {
+                _uiState.value = TransferUiState.Error("Transfer sudah ${transfer.status_transfer.name.lowercase()}, tidak bisa dibatalkan")
+                return@launch
+            }
+            _uiState.value = TransferUiState.Loading
+            try {
+                // Kembalikan stok ke proyek asal — membatalkan pengurangan saat transfer dibuat
+                katalogRepository.updateStokLokal(transfer.sku_id, transfer.jumlah)
+                transferRepository.updateStatusTransfer(transfer.id_transfer, StatusTransfer.DIBATALKAN)
+                _uiState.value = TransferUiState.Success
+                syncScheduler.requestSync()   // auto-sync bila online, ditunda bila offline
+            } catch (e: Exception) {
+                _uiState.value = TransferUiState.Error(e.message ?: "Gagal membatalkan transfer")
+            }
+        }
+    }
+
     fun reset() { _uiState.value = TransferUiState.Idle }
 }

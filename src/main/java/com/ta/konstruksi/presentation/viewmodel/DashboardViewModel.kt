@@ -66,11 +66,13 @@ class DashboardViewModel @Inject constructor(
         mutasiRepository.getAllMutasi(),
         transferRepository.getAllTransfer()
     ) { session, katalogList, mutasiList, transferList ->
-        // Peringatan stok (F2): hanya barang yang punya ambang minimum (> 0) dan stoknya
-        // sudah menyentuh/di bawah ambang tersebut. Paling genting (selisih terkecil) di atas.
+        // Peringatan stok (F2): barang yang punya ambang minimum (> 0) dan stoknya sudah menyentuh
+        // ambang (KRITIS) atau masih dalam 1.5× ambang (RENDAH, peringatan dini). Konsisten dengan
+        // aturan stokHealth() di Katalog. Urutkan berdasarkan rasio stok/ambang — yang paling genting
+        // (rasio terkecil, mis. 0 = stok habis) di atas, adil untuk ambang yang berbeda-beda.
         val lowStock = katalogList
-            .filter { it.stok_minimum > 0 && it.stok_lokal <= it.stok_minimum }
-            .sortedBy { it.stok_lokal - it.stok_minimum }
+            .filter { it.stok_minimum > 0 && it.stok_lokal <= it.stok_minimum * 1.5 }
+            .sortedBy { it.stok_lokal.toDouble() / it.stok_minimum }
             .take(3)
         // Daftar entitas yang masih menunggu sinkron (katalog + mutasi + transfer)
         val namaBySku = katalogList.associate { it.sku_id to it.nama_barang }
