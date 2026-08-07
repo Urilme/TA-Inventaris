@@ -79,12 +79,26 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.9.0")
 
-    // Testing
+    // Testing (unit — JVM, src/test/)
     testImplementation("junit:junit:4.13.2")
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0") // runTest
+    testImplementation("com.google.truth:truth:1.4.4")                        // assertion assertThat
+    testImplementation("io.mockk:mockk:1.13.13")                              // mocking
+    testImplementation("app.cash.turbine:turbine:1.1.0")                      // uji Flow/StateFlow
+    testImplementation("androidx.arch.core:core-testing:2.2.0")               // InstantTaskExecutor
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test:core-ktx:1.6.1")
+    androidTestImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
     androidTestImplementation(composeBom)
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-tooling")
+}
+
+// §10 — cetak status tiap test ke konsol sebagai checklist pass/fail per fitur
+tasks.withType<Test> {
+    testLogging {
+        events("passed", "failed", "skipped")
+        showStandardStreams = false
+    }
 }

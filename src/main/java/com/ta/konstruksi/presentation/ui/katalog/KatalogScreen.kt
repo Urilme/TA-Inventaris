@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -188,7 +189,7 @@ fun KatalogScreen(
 
         // FAB tambah barang — diangkat di atas navbar
         Box(
-            modifier = Modifier.align(Alignment.BottomEnd).padding(end = 18.dp, bottom = 88.dp).size(64.dp)
+            modifier = Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(end = 18.dp, bottom = 88.dp).size(64.dp)
                 .shadow(8.dp, RoundedCornerShape(20.dp)).clip(RoundedCornerShape(20.dp))
                 .background(Navy).clickable { navController.navigate(Screen.TambahKatalog.route) },
             contentAlignment = Alignment.Center

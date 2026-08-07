@@ -55,6 +55,7 @@ import com.ta.konstruksi.presentation.navigation.Screen
 import com.ta.konstruksi.presentation.ui.component.AppBottomBar
 import com.ta.konstruksi.presentation.ui.component.AppDropdownItem
 import com.ta.konstruksi.presentation.ui.component.AppDropdownMenu
+import com.ta.konstruksi.presentation.ui.component.BarangPickerDialog
 import com.ta.konstruksi.presentation.ui.component.ConfirmActionDialog
 import com.ta.konstruksi.presentation.ui.component.ConfirmInfoRow
 import com.ta.konstruksi.presentation.ui.component.NetworkBadge
@@ -93,6 +94,7 @@ fun TransferScreen(
     var proyekTujuan by remember { mutableStateOf("") }
     var jumlah by remember { mutableIntStateOf(1) }
     var showConfirm by remember { mutableStateOf(false) }
+    var showBarangPicker by remember { mutableStateOf(false) }
     val filteredItems = katalogList.filter { selectedKategori.isEmpty() || it.kategori == selectedKategori }
 
     LaunchedEffect(uiState) {
@@ -147,30 +149,15 @@ fun TransferScreen(
 
                 Spacer(Modifier.height(18.dp))
 
-                // Nama Barang
-                FormLabel("Nama Barang")
+                // Nama Barang — pemilih dengan pencarian + gulir (ketik untuk mencari, lalu pilih)
+                FormLabel("Nama Barang", subtitle = "(cari & pilih)")
                 Spacer(Modifier.height(8.dp))
-                var barangExpanded by remember { mutableStateOf(false) }
-                Box {
-                    DropdownField(
-                        value = selectedItem?.nama_barang ?: "Pilih Barang",
-                        isPlaceholder = selectedItem == null,
-                        isSelected = selectedItem != null,
-                        onClick = { barangExpanded = true }
-                    )
-                    AppDropdownMenu(expanded = barangExpanded, onDismissRequest = { barangExpanded = false }) {
-                        filteredItems.forEach { item ->
-                            AppDropdownItem(
-                                text = "${item.nama_barang} (${item.stok_lokal} ${item.satuan})",
-                                selected = selectedItem?.sku_id == item.sku_id,
-                                onClick = { selectedItem = item; jumlah = 1; barangExpanded = false }
-                            )
-                        }
-                        if (filteredItems.isEmpty()) {
-                            AppDropdownItem(text = "Belum ada barang", enabled = false, onClick = {})
-                        }
-                    }
-                }
+                DropdownField(
+                    value = selectedItem?.nama_barang ?: "Pilih Barang",
+                    isPlaceholder = selectedItem == null,
+                    isSelected = selectedItem != null,
+                    onClick = { showBarangPicker = true }
+                )
 
                 // Stok info
                 selectedItem?.let { item ->
@@ -338,11 +325,30 @@ fun TransferScreen(
             modifier = Modifier.align(Alignment.BottomCenter)
         )
     }
+
+    // Pemilih barang dengan pencarian + gulir (daftar difilter per kategori terpilih)
+    if (showBarangPicker) {
+        BarangPickerDialog(
+            items = filteredItems,
+            onDismiss = { showBarangPicker = false },
+            onSelect = { item ->
+                selectedItem = item
+                jumlah = 1
+                showBarangPicker = false
+            }
+        )
+    }
 }
 
 @Composable
-private fun FormLabel(label: String) {
-    Text(label, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+private fun FormLabel(label: String, subtitle: String = "") {
+    Row {
+        Text(label, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+        if (subtitle.isNotEmpty()) {
+            Spacer(Modifier.width(4.dp))
+            Text(subtitle, fontSize = 13.sp, color = TextSubtle)
+        }
+    }
 }
 
 @Composable

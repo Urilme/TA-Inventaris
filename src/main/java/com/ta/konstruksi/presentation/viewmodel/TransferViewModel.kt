@@ -65,6 +65,12 @@ class TransferViewModel @Inject constructor(
 
     fun createTransfer(item: MasterKatalog, proyekTujuan: String, jumlah: Int, proyekAsal: String) {
         viewModelScope.launch {
+            // Proyek tujuan tidak boleh sama dengan proyek asal (dijaga UI via dropdown, ditegakkan
+            // juga di domain agar bebas dari jalur input tak terduga).
+            if (proyekAsal.trim().equals(proyekTujuan.trim(), ignoreCase = true)) {
+                _uiState.value = TransferUiState.Error("Proyek tujuan tidak boleh sama dengan proyek asal")
+                return@launch
+            }
             _uiState.value = TransferUiState.Loading
             try {
                 // Transfer self-describing: bawa snapshot barang agar penerima bisa menampilkan &

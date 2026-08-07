@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.size
@@ -120,7 +121,8 @@ fun TransferDetailScreen(
                 val namaBarang = transfer.nama_barang.ifBlank { katalogItem?.nama_barang ?: "Barang tidak dikenal" }
                 val kategoriRaw = transfer.kategori.ifBlank { katalogItem?.kategori ?: "" }
                 val satuan = transfer.satuan.ifBlank { katalogItem?.satuan ?: "unit" }
-                Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(18.dp)) {
+                Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState())
+                    .navigationBarsPadding().padding(18.dp)) {
                     // Item header
                     Row(modifier = Modifier.fillMaxWidth().padding(bottom = 18.dp), verticalAlignment = Alignment.CenterVertically) {
                         Box(

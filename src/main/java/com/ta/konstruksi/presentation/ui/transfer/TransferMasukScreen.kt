@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.size
@@ -22,8 +23,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.HourglassEmpty
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -133,7 +132,7 @@ fun TransferMasukScreen(
                 }
             } else {
                 LazyColumn(
-                    modifier = Modifier.weight(1f).padding(horizontal = 16.dp, vertical = 14.dp),
+                    modifier = Modifier.weight(1f).navigationBarsPadding().padding(horizontal = 16.dp, vertical = 14.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     items(incomingTransfers) { transfer ->
@@ -144,28 +143,6 @@ fun TransferMasukScreen(
                             onClick = { navController.navigate(Screen.TransferDetail.createRoute(transfer.id_transfer)) }
                         )
                     }
-                }
-            }
-
-            // Bottom nav
-            Row(
-                modifier = Modifier.fillMaxWidth().height(64.dp).background(Color.White)
-                    .border(1.5.dp, BorderLight, RoundedCornerShape(0.dp)),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                Column(
-                    modifier = Modifier.weight(1f).fillMaxSize().clickable { navController.navigate(Screen.Dashboard.route) { popUpTo(Screen.Dashboard.route) } },
-                    horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center
-                ) {
-                    Icon(Icons.Default.Home, null, tint = TextSubtle, modifier = Modifier.size(24.dp))
-                    Text("Beranda", fontSize = 11.sp, color = TextSubtle)
-                }
-                Column(
-                    modifier = Modifier.weight(1f).fillMaxSize().clickable { navController.navigate(Screen.Riwayat.route) },
-                    horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center
-                ) {
-                    Icon(Icons.Default.History, null, tint = TextSubtle, modifier = Modifier.size(24.dp))
-                    Text("Riwayat", fontSize = 11.sp, color = TextSubtle)
                 }
             }
         }

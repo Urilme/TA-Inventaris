@@ -61,7 +61,13 @@ class RiwayatViewModel @Inject constructor(
         val namaBySku = katalogList.associate { it.sku_id to it.nama_barang }
         val items = mutableListOf<RiwayatItem>()
         mutasiList.forEach { items.add(RiwayatItem.Mutasi(it, namaBySku[it.sku_id].orEmpty())) }
-        transferList.forEach { items.add(RiwayatItem.Transfer(it, namaBySku[it.sku_id].orEmpty())) }
+        // Transfer bersifat self-describing: bila SKU asal tidak ada di katalog proyek ini
+        // (mis. transfer antar-proyek yang diterima), pakai snapshot nama_barang dari TransferProyek
+        // agar tidak tampil "Barang tidak dikenal". Konsisten dgn TransferMasuk/TransferDetail.
+        transferList.forEach {
+            val nama = namaBySku[it.sku_id].orEmpty().ifBlank { it.nama_barang }
+            items.add(RiwayatItem.Transfer(it, nama))
+        }
         val sorted = items.sortedByDescending { it.timestamp }
         if (filter != null) sorted.filter { it.syncStatus == filter } else sorted
     }.onEach { _initialLoaded.value = true }

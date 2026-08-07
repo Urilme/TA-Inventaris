@@ -209,7 +209,7 @@ fun LoginScreen(
                     errorBorderColor = RedMain, errorContainerColor = Color.White, errorLeadingIconColor = RedMain
                 ),
                 leadingIcon = { Icon(Icons.Default.Person, contentDescription = null, tint = TextSubtle, modifier = Modifier.size(22.dp)) },
-                placeholder = { Text("username", color = TextSubtle, fontSize = 15.sp) },
+                placeholder = { Text("contoh: budi", color = TextSubtle, fontSize = 15.sp) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Next),
                 singleLine = true
             )
@@ -231,6 +231,7 @@ fun LoginScreen(
                     errorBorderColor = RedMain, errorContainerColor = Color.White, errorLeadingIconColor = RedMain
                 ),
                 leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null, tint = TextSubtle, modifier = Modifier.size(22.dp)) },
+                placeholder = { Text("kata sandi Anda", color = TextSubtle, fontSize = 15.sp) },
                 trailingIcon = {
                     IconButton(onClick = { passwordVisible = !passwordVisible }) {
                         Icon(

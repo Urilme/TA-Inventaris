@@ -7,7 +7,6 @@ import com.ta.konstruksi.domain.repository.AuthRepository
 import com.ta.konstruksi.domain.repository.KatalogRepository
 import com.ta.konstruksi.domain.repository.MutasiRepository
 import com.ta.konstruksi.domain.repository.TransferRepository
-import com.ta.konstruksi.util.SyncStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -39,9 +38,9 @@ class ProfileViewModel @Inject constructor(
         mutasiRepository.getAllMutasi(),
         transferRepository.getAllTransfer()
     ) { session, katalog, mutasi, transfer ->
-        val pending = katalog.count { it.sync_status == SyncStatus.PENDING } +
-            mutasi.count { it.sync_status == SyncStatus.PENDING } +
-            transfer.count { it.sync_status == SyncStatus.PENDING }
+        // Hitung sebagai aksi pengguna (perubahan katalog akibat mutasi tidak dihitung ganda) —
+        // definisi yang sama dengan Dashboard. Lihat buildPendingSyncItems().
+        val pending = buildPendingSyncItems(katalog, mutasi, transfer).size
         ProfileUiState(session = session, pendingCount = pending)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ProfileUiState())
 

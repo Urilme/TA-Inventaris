@@ -9,9 +9,7 @@ import com.ta.konstruksi.domain.repository.KatalogRepository
 import com.ta.konstruksi.domain.repository.MutasiRepository
 import com.ta.konstruksi.domain.repository.TransferRepository
 import com.ta.konstruksi.sync.SyncScheduler
-import com.ta.konstruksi.util.JenisMutasi
 import com.ta.konstruksi.util.StatusTransfer
-import com.ta.konstruksi.util.SyncStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -74,22 +72,9 @@ class DashboardViewModel @Inject constructor(
             .filter { it.stok_minimum > 0 && it.stok_lokal <= it.stok_minimum * 1.5 }
             .sortedBy { it.stok_lokal.toDouble() / it.stok_minimum }
             .take(3)
-        // Daftar entitas yang masih menunggu sinkron (katalog + mutasi + transfer)
-        val namaBySku = katalogList.associate { it.sku_id to it.nama_barang }
-        val pendingItems = buildList {
-            katalogList.filter { it.sync_status == SyncStatus.PENDING }.forEach {
-                add(PendingSyncItem(it.nama_barang, "Perubahan katalog", it.local_timestamp))
-            }
-            mutasiList.filter { it.sync_status == SyncStatus.PENDING }.forEach {
-                val nama = namaBySku[it.sku_id] ?: it.sku_id
-                val detail = if (it.jenis_mutasi == JenisMutasi.CHECK_IN) "Masuk +${it.jumlah}" else "Keluar -${it.jumlah}"
-                add(PendingSyncItem(nama, detail, it.local_timestamp))
-            }
-            transferList.filter { it.sync_status == SyncStatus.PENDING }.forEach {
-                val nama = namaBySku[it.sku_id] ?: it.sku_id
-                add(PendingSyncItem(nama, "Transfer ${it.jumlah} → ${it.proyek_tujuan}", it.local_timestamp))
-            }
-        }.sortedByDescending { it.timestamp }
+        // Daftar entitas yang masih menunggu sinkron, disusun sebagai aksi pengguna (bukan baris
+        // tabel mentah) agar 1 mutasi tidak tampak jadi 2 item. Lihat buildPendingSyncItems().
+        val pendingItems = buildPendingSyncItems(katalogList, mutasiList, transferList)
         val todayStart = java.util.Calendar.getInstance().apply {
             set(java.util.Calendar.HOUR_OF_DAY, 0)
             set(java.util.Calendar.MINUTE, 0)

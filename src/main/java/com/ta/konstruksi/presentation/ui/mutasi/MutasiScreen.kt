@@ -14,13 +14,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -33,7 +32,6 @@ import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Info
@@ -42,7 +40,6 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Save
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -71,10 +68,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ta.konstruksi.domain.model.MasterKatalog
 import com.ta.konstruksi.presentation.ui.component.AppDropdownItem
 import com.ta.konstruksi.presentation.ui.component.AppDropdownMenu
+import com.ta.konstruksi.presentation.ui.component.BarangPickerDialog
 import com.ta.konstruksi.presentation.ui.component.NetworkBadge
 import com.ta.konstruksi.presentation.ui.theme.AppBackground
 import com.ta.konstruksi.presentation.ui.theme.BorderInput
-import com.ta.konstruksi.presentation.ui.theme.BorderLight
 import com.ta.konstruksi.presentation.ui.theme.GreenBg
 import com.ta.konstruksi.presentation.ui.theme.GreenMain
 import com.ta.konstruksi.presentation.ui.theme.InfoBg
@@ -152,7 +149,8 @@ fun MutasiScreen(
             }
 
             Column(
-                modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(18.dp)
+                modifier = Modifier.weight(1f).verticalScroll(rememberScrollState())
+                    .navigationBarsPadding().imePadding().padding(18.dp)
             ) {
                 // Toggle
                 Row(
@@ -678,110 +676,6 @@ private fun MutasiSuccessDialog(onDone: () -> Unit) {
                 contentAlignment = Alignment.Center
             ) {
                 Text("SELESAI", fontSize = 16.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp, color = Color.White)
-            }
-        }
-    }
-}
-
-@Composable
-private fun BarangPickerDialog(
-    items: List<MasterKatalog>,
-    onDismiss: () -> Unit,
-    onSelect: (MasterKatalog) -> Unit
-) {
-    var query by remember { mutableStateOf("") }
-    val shown = items.filter {
-        query.isBlank() || it.nama_barang.contains(query, true) ||
-            it.kategori.contains(query, true)
-    }
-    Dialog(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(Color.White).padding(20.dp)
-        ) {
-            // Header
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier.size(40.dp).clip(RoundedCornerShape(10.dp)).background(InfoBg),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Default.Inventory, contentDescription = null, tint = Navy, modifier = Modifier.size(22.dp))
-                }
-                Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
-                    Text("Pilih Barang", fontSize = 17.sp, fontWeight = FontWeight.Black, color = Navy)
-                    Text("${items.size} barang tersedia", fontSize = 12.sp, color = TextSubtle)
-                }
-                Box(
-                    modifier = Modifier.size(34.dp).clip(CircleShape).background(AppBackground)
-                        .clickable(onClick = onDismiss),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Default.Close, contentDescription = "Tutup", tint = TextSubtle, modifier = Modifier.size(20.dp))
-                }
-            }
-
-            Spacer(Modifier.height(16.dp))
-
-            // Search — bergaya app (putih, sudut membulat, border, ikon cari)
-            Row(
-                modifier = Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(12.dp))
-                    .background(AppBackground).border(1.5.dp, BorderInput, RoundedCornerShape(12.dp))
-                    .padding(horizontal = 14.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(Icons.Default.Search, contentDescription = null, tint = TextSubtle, modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(10.dp))
-                BasicTextField(
-                    value = query, onValueChange = { query = it },
-                    modifier = Modifier.weight(1f), singleLine = true,
-                    textStyle = androidx.compose.ui.text.TextStyle(fontSize = 15.sp, color = Navy),
-                    decorationBox = { inner ->
-                        if (query.isEmpty()) Text("Cari nama atau kategori…", fontSize = 15.sp, color = TextSubtle)
-                        inner()
-                    }
-                )
-            }
-
-            Spacer(Modifier.height(14.dp))
-
-            if (shown.isEmpty()) {
-                Box(modifier = Modifier.fillMaxWidth().padding(vertical = 28.dp), contentAlignment = Alignment.Center) {
-                    Text(
-                        if (items.isEmpty()) "Belum ada barang pada kategori ini." else "Tidak ada hasil untuk \"$query\".",
-                        fontSize = 13.sp, color = TextSubtle, textAlign = TextAlign.Center
-                    )
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxWidth().heightIn(max = 340.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    items(shown) { item ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
-                                .background(Color.White).border(1.5.dp, BorderLight, RoundedCornerShape(12.dp))
-                                .clickable { onSelect(item) }.padding(13.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(
-                                modifier = Modifier.size(38.dp).clip(RoundedCornerShape(10.dp)).background(Color(0xFFeef1f3)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(Icons.Default.Inventory, contentDescription = null, tint = Navy, modifier = Modifier.size(20.dp))
-                            }
-                            Spacer(Modifier.width(12.dp))
-                            Column(Modifier.weight(1f)) {
-                                Text(item.nama_barang, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Navy)
-                                Text(KategoriBarang.label(item.kategori), fontSize = 11.sp, color = TextSubtle)
-                            }
-                            Text(
-                                "${item.stok_lokal} ${item.satuan}",
-                                fontSize = 14.sp, fontWeight = FontWeight.Bold,
-                                color = if (item.stok_lokal <= 5) RedMain else Navy
-                            )
-                        }
-                    }
-                }
             }
         }
     }
