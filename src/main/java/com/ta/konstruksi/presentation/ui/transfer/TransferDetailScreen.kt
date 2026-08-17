@@ -21,8 +21,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Inventory
@@ -248,7 +248,7 @@ fun TransferDetailScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.Flag, null, tint = RedMain, modifier = Modifier.size(22.dp))
+                                Icon(Icons.Default.Cancel, null, tint = RedMain, modifier = Modifier.size(22.dp))
                                 Spacer(Modifier.width(10.dp))
                                 Text("Batalkan Transfer", fontSize = 15.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.4.sp, color = RedMain)
                             }
@@ -288,7 +288,7 @@ fun TransferDetailScreen(
                 // Guard pembatalan — stok dikembalikan ke proyek asal (status → DIBATALKAN)
                 if (showBatal) {
                     ConfirmActionDialog(
-                        icon = Icons.Default.Flag,
+                        icon = Icons.Default.Cancel,
                         accent = RedMain,
                         accentBg = RedBg,
                         title = "Batalkan Transfer",
@@ -296,7 +296,7 @@ fun TransferDetailScreen(
                         message = "Stok akan dikembalikan ke proyek asal (${transfer.proyek_asal}) dan status transfer menjadi DIBATALKAN. Tindakan ini tidak bisa diurungkan.",
                         confirmLabel = "Ya, Batalkan",
                         confirmColor = RedMain,
-                        confirmIcon = Icons.Default.Flag,
+                        confirmIcon = Icons.Default.Cancel,
                         isProcessing = uiState is TransferUiState.Loading,
                         onDismiss = { showBatal = false },
                         onConfirm = { viewModel.cancelTransfer(transfer) },

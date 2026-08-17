@@ -23,6 +23,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.Engineering
 import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationOn
@@ -79,8 +80,6 @@ fun ProfileScreen(
     }
 
     val nama = session?.nama?.takeIf { it.isNotBlank() } ?: "Mandor"
-    val inisial = nama.trim().split(" ").filter { it.isNotBlank() }
-        .take(2).joinToString("") { it.first().uppercase() }.ifBlank { "M" }
     var showLogoutConfirm by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize().background(AppBackground)) {
@@ -111,7 +110,12 @@ fun ProfileScreen(
                             .background(Color.White),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(inisial, fontSize = 32.sp, fontWeight = FontWeight.Black, color = Navy)
+                        Icon(
+                            Icons.Default.Engineering,
+                            contentDescription = "Avatar mandor",
+                            tint = Navy,
+                            modifier = Modifier.size(48.dp)
+                        )
                     }
                     Spacer(Modifier.height(12.dp))
                     Text(nama, fontSize = 21.sp, fontWeight = FontWeight.Black, color = Color.White)

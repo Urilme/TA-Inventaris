@@ -19,7 +19,7 @@ import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
 
 sealed class RiwayatItem {
-    data class Mutasi(val data: LogMutasi, val namaBarang: String = "") : RiwayatItem()
+    data class Mutasi(val data: LogMutasi, val namaBarang: String = "", val kategori: String = "") : RiwayatItem()
     data class Transfer(val data: TransferProyek, val namaBarang: String = "") : RiwayatItem()
 
     val timestamp: Long get() = when (this) {
@@ -59,8 +59,13 @@ class RiwayatViewModel @Inject constructor(
     ) { mutasiList, transferList, katalogList, filter ->
         // Peta SKU -> nama barang agar riwayat menampilkan nama, bukan UUID
         val namaBySku = katalogList.associate { it.sku_id to it.nama_barang }
+        // Peta SKU -> kategori: dipakai mengisi badge kategori pada kartu mutasi bahan/scaffolding
+        // (yang kondisi_barang-nya null) agar tidak menyisakan ruang kosong seperti kartu transfer.
+        val kategoriBySku = katalogList.associate { it.sku_id to it.kategori }
         val items = mutableListOf<RiwayatItem>()
-        mutasiList.forEach { items.add(RiwayatItem.Mutasi(it, namaBySku[it.sku_id].orEmpty())) }
+        mutasiList.forEach {
+            items.add(RiwayatItem.Mutasi(it, namaBySku[it.sku_id].orEmpty(), kategoriBySku[it.sku_id].orEmpty()))
+        }
         // Transfer bersifat self-describing: bila SKU asal tidak ada di katalog proyek ini
         // (mis. transfer antar-proyek yang diterima), pakai snapshot nama_barang dari TransferProyek
         // agar tidak tampil "Barang tidak dikenal". Konsisten dgn TransferMasuk/TransferDetail.

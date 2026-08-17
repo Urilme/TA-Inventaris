@@ -63,6 +63,14 @@ class RecordMutasiUseCaseTest {
     }
 
     @Test
+    fun `check-out sama dengan stok lokal menyisakan stok tepat nol`() = runTest {
+        katalog.put(masterKatalog(stok = 5))
+        val r = record(jenis = JenisMutasi.CHECK_OUT, jumlah = 5)
+        assertThat(r.isSuccess).isTrue()
+        assertThat(katalog.current("SKU-1")!!.stok_lokal).isEqualTo(0)
+    }
+
+    @Test
     fun `check-out melebihi stok lokal ditolak dan stok tidak berubah`() = runTest {
         katalog.put(masterKatalog(stok = 3))
         val r = record(jenis = JenisMutasi.CHECK_OUT, jumlah = 5)

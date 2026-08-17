@@ -39,6 +39,27 @@ class LoginUseCaseTest {
     }
 
     @Test
+    fun `login daring dengan kredensial valid mengembalikan sesi berhasil`() = runTest {
+        val session = userSession(
+            id = "M2", nama = "Siti", username = "siti", idProyek = "PRJ-002", namaProyek = "Proyek B"
+        )
+        val useCase = LoginUseCase(FakeAuthRepository(loginResult = Result.success(session)))
+        val r = useCase("siti", "rahasia123")
+        assertThat(r.isSuccess).isTrue()
+        assertThat(r.getOrNull()!!.nama).isEqualTo("Siti")
+        assertThat(r.getOrNull()!!.username).isEqualTo("siti")
+        assertThat(r.getOrNull()!!.nama_proyek).isEqualTo("Proyek B")
+    }
+
+    @Test
+    fun `login luring tanpa sesi tersimpan ditolak`() = runTest {
+        val useCase = LoginUseCase(FakeAuthRepository(session = null, loginResult = null))
+        val r = useCase("budi", "rahasia")
+        assertThat(r.isFailure).isTrue()
+        assertThat(r.exceptionOrNull()!!.message).contains("Tidak ada sesi tersimpan")
+    }
+
+    @Test
     fun `login diteruskan sebagai gagal bila repository gagal`() = runTest {
         val useCase = LoginUseCase(FakeAuthRepository(loginResult = Result.failure(RuntimeException("kredensial salah"))))
         val r = useCase("budi", "salah")

@@ -2,8 +2,10 @@ package com.ta.konstruksi.sync
 
 import com.google.common.truth.Truth.assertThat
 import com.ta.konstruksi.data.local.dao.LogMutasiDao
+import com.ta.konstruksi.data.local.dao.ProyekDao
 import com.ta.konstruksi.data.local.dao.UserSessionDao
 import com.ta.konstruksi.data.local.entity.LogMutasiEntity
+import com.ta.konstruksi.data.local.entity.ProyekEntity
 import com.ta.konstruksi.data.remote.FirestoreDataSource
 import com.ta.konstruksi.data.repository.SyncRepositoryImpl
 import io.mockk.coEvery
@@ -21,12 +23,13 @@ class SyncRepositoryTest {
     private val mutasiDao = mockk<LogMutasiDao>(relaxed = true)
     private val firestore = mockk<FirestoreDataSource>(relaxed = true)
     private val userSessionDao = mockk<UserSessionDao>(relaxed = true)
+    private val proyekDao = mockk<ProyekDao>(relaxed = true)
 
     private fun repo() = SyncRepositoryImpl(
         mutasiDao = mutasiDao,
         transferDao = mockk(relaxed = true),
         katalogDao = mockk(relaxed = true),
-        proyekDao = mockk(relaxed = true),
+        proyekDao = proyekDao,
         userSessionDao = userSessionDao,
         firestore = firestore
     )
@@ -57,5 +60,26 @@ class SyncRepositoryTest {
 
         assertThat(result.isFailure).isTrue()
         coVerify { mutasiDao.updateSyncStatus("TX1", "PENDING") }    // rollback
+    }
+
+    @Test
+    fun `pull registry proyek mengganti cache lokal bila server mengembalikan data`() = runTest {
+        val remote = listOf(ProyekEntity(id_proyek = "PRJ-001", nama_proyek = "Proyek A"))
+        coEvery { firestore.pullProyek() } returns remote
+
+        val result = repo().pullLatestProyek()
+
+        assertThat(result.isSuccess).isTrue()
+        coVerify { proyekDao.replaceAll(remote) }
+    }
+
+    @Test
+    fun `pull registry proyek tidak menghapus cache saat server mengembalikan daftar kosong`() = runTest {
+        coEvery { firestore.pullProyek() } returns emptyList()
+
+        val result = repo().pullLatestProyek()
+
+        assertThat(result.isSuccess).isTrue()
+        coVerify(exactly = 0) { proyekDao.replaceAll(any()) }
     }
 }

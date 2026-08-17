@@ -117,6 +117,12 @@ class FakeKatalogRepository : KatalogRepository {
     override suspend fun updateStokLokal(skuId: String, delta: Int) {
         items[skuId]?.let { put(it.copy(stok_lokal = it.stok_lokal + delta)) }
     }
+    override suspend fun decrementStokLokalJikaCukup(skuId: String, jumlah: Int): Boolean {
+        val item = items[skuId] ?: return false
+        if (item.stok_lokal - jumlah < 0) return false
+        put(item.copy(stok_lokal = item.stok_lokal - jumlah))
+        return true
+    }
 }
 
 /** Fake mutasi. Bila [katalog] diberikan, meniru transaksi atomik (guard stok minus). */

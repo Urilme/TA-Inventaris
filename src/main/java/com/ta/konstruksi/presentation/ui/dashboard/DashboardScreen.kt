@@ -26,6 +26,7 @@ import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.Engineering
 import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.LocationOn
@@ -118,9 +119,6 @@ fun DashboardScreen(
                         )
                     }
                     // Avatar → buka Profil (logout kini ada di dalam Profil)
-                    val dashNama = state.session?.nama?.takeIf { it.isNotBlank() } ?: "Mandor"
-                    val dashInisial = dashNama.trim().split(" ").filter { it.isNotBlank() }
-                        .take(2).joinToString("") { it.first().uppercase() }.ifBlank { "M" }
                     Box(
                         modifier = Modifier
                             .size(44.dp)
@@ -130,7 +128,12 @@ fun DashboardScreen(
                             .clickable { navController.navigate(Screen.Profil.route) },
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(dashInisial, fontSize = 16.sp, fontWeight = FontWeight.Black, color = Color.White)
+                        Icon(
+                            Icons.Default.Engineering,
+                            contentDescription = "Avatar mandor",
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp)
+                        )
                     }
                 }
                 Spacer(Modifier.height(12.dp))

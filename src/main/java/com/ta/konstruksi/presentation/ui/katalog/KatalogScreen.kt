@@ -74,6 +74,7 @@ import com.ta.konstruksi.presentation.ui.theme.RedMain
 import com.ta.konstruksi.presentation.ui.theme.TextSubtle
 import com.ta.konstruksi.presentation.viewmodel.KatalogViewModel
 import com.ta.konstruksi.util.KategoriBarang
+import com.ta.konstruksi.util.SearchFilter
 import com.ta.konstruksi.util.SyncStatus
 
 @Composable
@@ -88,8 +89,7 @@ fun KatalogScreen(
 
     val filtered = katalogList.filter {
         (selectedKategori == null || it.kategori == selectedKategori) &&
-            (searchQuery.isBlank() || it.nama_barang.contains(searchQuery, true) ||
-                it.kategori.contains(searchQuery, true))
+            SearchFilter.matchesKatalog(it.nama_barang, it.kategori, searchQuery)
     }
 
     Box(modifier = Modifier.fillMaxSize().background(AppBackground)) {

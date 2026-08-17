@@ -46,4 +46,7 @@ class KatalogRepositoryImpl @Inject constructor(
 
     override suspend fun updateStokLokal(skuId: String, delta: Int) =
         katalogDao.updateStok(skuId, delta)
+
+    override suspend fun decrementStokLokalJikaCukup(skuId: String, jumlah: Int): Boolean =
+        katalogDao.decrementStokJikaCukup(skuId, jumlah)
 }

@@ -87,8 +87,15 @@ class TransferViewModel @Inject constructor(
                     status_transfer = StatusTransfer.IN_TRANSIT,
                     sync_status = SyncStatus.PENDING
                 )
+                // Kurangi stok proyek asal secara atomik & terjaga — tolak bila stok tak mencukupi
+                // (mis. akibat mutasi/transfer lain yang bersamaan pada SKU sama). Mencegah stok
+                // minus di bawah konkurensi (Concurrency Testing No. 7).
+                val stokCukup = katalogRepository.decrementStokLokalJikaCukup(item.sku_id, jumlah)
+                if (!stokCukup) {
+                    _uiState.value = TransferUiState.Error("Stok tidak mencukupi untuk transfer sebanyak $jumlah")
+                    return@launch
+                }
                 transferRepository.createTransfer(transfer)
-                katalogRepository.updateStokLokal(item.sku_id, -jumlah)   // stok proyek asal berkurang
                 _uiState.value = TransferUiState.Success
                 syncScheduler.requestSync()   // auto-sync bila online, ditunda bila offline
             } catch (e: Exception) {

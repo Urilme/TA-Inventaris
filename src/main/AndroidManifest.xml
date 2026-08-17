@@ -9,7 +9,7 @@
         android:name=".KonstruksiApp"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
-        android:label="TA Inventaris"
+        android:label="SKN Inventaris"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.NoActionBar">

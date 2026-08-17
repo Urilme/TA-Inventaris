@@ -40,6 +40,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -84,6 +85,7 @@ import com.ta.konstruksi.presentation.ui.theme.TextSubtle
 import com.ta.konstruksi.presentation.viewmodel.KatalogViewModel
 import com.ta.konstruksi.presentation.viewmodel.MutasiUiState
 import com.ta.konstruksi.presentation.viewmodel.MutasiViewModel
+import com.ta.konstruksi.util.FormInput
 import com.ta.konstruksi.util.JenisMutasi
 import com.ta.konstruksi.util.KategoriBarang
 import com.ta.konstruksi.util.KondisiBarang
@@ -127,7 +129,7 @@ fun MutasiScreen(
 
     val filteredItems = katalogList.filter { selectedKategori.isEmpty() || it.kategori == selectedKategori }
     // Kondisi barang hanya relevan (dan wajib) untuk kategori "alat" (aturan F3)
-    val isAlat = selectedItem?.kategori == KategoriBarang.ALAT
+    val isAlat = FormInput.isKondisiRequired(selectedItem?.kategori)
 
     LaunchedEffect(uiState) {
         if (uiState is MutasiUiState.Success) showSuccess = true
@@ -241,14 +243,18 @@ fun MutasiScreen(
                     ) {
                         Icon(Icons.Default.Remove, contentDescription = "Kurangi jumlah", tint = Navy, modifier = Modifier.size(26.dp))
                     }
+                    val jumlahOverStock = jenis == JenisMutasi.CHECK_OUT &&
+                        (selectedItem?.let { jumlah > it.stok_lokal } ?: false)
                     Box(
                         modifier = Modifier.weight(1f).height(58.dp).padding(horizontal = 8.dp)
-                            .clip(RoundedCornerShape(12.dp)).border(1.5.dp, Navy, RoundedCornerShape(12.dp)).background(Color.White),
+                            .clip(RoundedCornerShape(12.dp))
+                            .border(1.5.dp, if (jumlahOverStock) RedMain else Navy, RoundedCornerShape(12.dp))
+                            .background(Color.White),
                         contentAlignment = Alignment.Center
                     ) {
                         BasicTextField(
                             value = jumlahText,
-                            onValueChange = { raw -> jumlahText = raw.filter { it.isDigit() }.take(5) },
+                            onValueChange = { raw -> jumlahText = FormInput.sanitizeJumlah(raw) },
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             textStyle = androidx.compose.ui.text.TextStyle(
@@ -278,10 +284,24 @@ fun MutasiScreen(
                 selectedItem?.let { item ->
                     if (jenis == JenisMutasi.CHECK_OUT) {
                         Spacer(Modifier.height(8.dp))
+                        val isOver = jumlah > item.stok_lokal
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Info, contentDescription = null, tint = TextSubtle, modifier = Modifier.size(16.dp))
+                            Icon(
+                                if (isOver) Icons.Default.Warning else Icons.Default.Info,
+                                contentDescription = null,
+                                tint = if (isOver) RedMain else TextSubtle,
+                                modifier = Modifier.size(16.dp)
+                            )
                             Spacer(Modifier.width(6.dp))
-                            Text("Maksimal ${item.stok_lokal} ${item.satuan} — tidak boleh melebihi stok lokal.", fontSize = 12.sp, color = TextSubtle)
+                            Text(
+                                if (isOver)
+                                    "Jumlah melebihi stok — maksimal ${item.stok_lokal} ${item.satuan}."
+                                else
+                                    "Maksimal ${item.stok_lokal} ${item.satuan} — tidak boleh melebihi stok lokal.",
+                                fontSize = 12.sp,
+                                fontWeight = if (isOver) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isOver) RedMain else TextSubtle
+                            )
                         }
                     }
                 }
@@ -412,9 +432,14 @@ fun MutasiScreen(
                     (selectedItem?.let { jumlah > it.stok_lokal } ?: false)
                 // Lokasi hanya wajib untuk Barang Keluar; Barang Masuk tidak memerlukannya.
                 val lokasiValid = jenis == JenisMutasi.CHECK_IN || lokasiPenggunaan.isNotBlank()
-                val canSave = selectedItem != null && jumlah > 0 && !isOverStock &&
-                    lokasiValid && penanggungjawab.isNotBlank() &&
-                    uiState !is MutasiUiState.Loading
+                val canSave = FormInput.canSaveMutasi(
+                    hasItem = selectedItem != null,
+                    jumlah = jumlah,
+                    isOverStock = isOverStock,
+                    lokasiValid = lokasiValid,
+                    penanggungjawabBlank = penanggungjawab.isBlank(),
+                    isLoading = uiState is MutasiUiState.Loading
+                )
                 val isSaving = uiState is MutasiUiState.Loading
                 Box(
                     modifier = Modifier.fillMaxWidth().height(62.dp).clip(RoundedCornerShape(14.dp))

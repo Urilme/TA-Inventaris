@@ -10,4 +10,7 @@ interface KatalogRepository {
     suspend fun upsertKatalog(item: MasterKatalog)
     suspend fun deleteKatalog(skuId: String)
     suspend fun updateStokLokal(skuId: String, delta: Int)
+
+    /** Pengurangan stok terjaga (atomik) — false bila stok tidak mencukupi. Dipakai jalur transfer. */
+    suspend fun decrementStokLokalJikaCukup(skuId: String, jumlah: Int): Boolean
 }

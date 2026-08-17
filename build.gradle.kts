@@ -24,6 +24,12 @@ android {
         compose = true
     }
 
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true   // wajib utk Robolectric (akses resource + manifest)
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -86,6 +92,11 @@ dependencies {
     testImplementation("io.mockk:mockk:1.13.13")                              // mocking
     testImplementation("app.cash.turbine:turbine:1.1.0")                      // uji Flow/StateFlow
     testImplementation("androidx.arch.core:core-testing:2.2.0")               // InstantTaskExecutor
+    // Compose UI test di JVM lewat Robolectric (F3 — validasi formulir di lapisan Composable)
+    testImplementation("org.robolectric:robolectric:4.14.1")
+    testImplementation(composeBom)
+    testImplementation("androidx.compose.ui:ui-test-junit4")
+    testImplementation("androidx.test.ext:junit:1.2.1")                       // runner AndroidJUnit4 (JVM)
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test:core-ktx:1.6.1")
     androidTestImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
@@ -93,6 +104,7 @@ dependencies {
     androidTestImplementation(composeBom)
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-tooling")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")   // host activity utk createComposeRule()
 }
 
 // §10 — cetak status tiap test ke konsol sebagai checklist pass/fail per fitur

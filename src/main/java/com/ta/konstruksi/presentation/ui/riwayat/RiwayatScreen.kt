@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.HourglassEmpty
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Tune
@@ -58,6 +59,7 @@ import com.ta.konstruksi.presentation.ui.component.SyncStatusBadge
 import com.ta.konstruksi.presentation.ui.theme.AmberBg
 import com.ta.konstruksi.presentation.ui.theme.AmberBorder
 import com.ta.konstruksi.presentation.ui.theme.AmberMain
+import com.ta.konstruksi.presentation.ui.theme.AmberText
 import com.ta.konstruksi.presentation.ui.theme.AppBackground
 import com.ta.konstruksi.presentation.ui.theme.BorderLight
 import com.ta.konstruksi.presentation.ui.theme.GreenBg
@@ -65,12 +67,16 @@ import com.ta.konstruksi.presentation.ui.theme.GreenBorder
 import com.ta.konstruksi.presentation.ui.theme.GreenMain
 import com.ta.konstruksi.presentation.ui.theme.Navy
 import com.ta.konstruksi.presentation.ui.theme.RedBg
+import com.ta.konstruksi.presentation.ui.theme.RedBorder
 import com.ta.konstruksi.presentation.ui.theme.RedMain
 import com.ta.konstruksi.presentation.ui.theme.TextSubtle
 import com.ta.konstruksi.presentation.viewmodel.RiwayatItem
 import com.ta.konstruksi.presentation.viewmodel.RiwayatViewModel
 import com.ta.konstruksi.util.JenisMutasi
+import com.ta.konstruksi.util.KategoriBarang
 import com.ta.konstruksi.util.KondisiBarang
+import com.ta.konstruksi.util.SearchFilter
+import com.ta.konstruksi.util.StatusTransfer
 import com.ta.konstruksi.util.SyncStatus
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -89,11 +95,11 @@ fun RiwayatScreen(
     var searchQuery by remember { mutableStateOf("") }
 
     val filtered = riwayatList.filter {
-        if (searchQuery.isBlank()) true
-        else it.label.contains(searchQuery, true) || when (it) {
-            is RiwayatItem.Mutasi -> it.data.sku_id.contains(searchQuery, true)
-            is RiwayatItem.Transfer -> it.data.sku_id.contains(searchQuery, true)
+        val sku = when (it) {
+            is RiwayatItem.Mutasi -> it.data.sku_id
+            is RiwayatItem.Transfer -> it.data.sku_id
         }
+        SearchFilter.matchesRiwayat(it.label, sku, searchQuery)
     }
 
     Box(modifier = Modifier.fillMaxSize().background(AppBackground)) {
@@ -280,8 +286,13 @@ private fun RiwayatCard(item: RiwayatItem) {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Kondisi hanya relevan untuk kategori "alat"; bila null tampilkan placeholder
-                    if (m.kondisi_barang != null) KondisiBadge(m.kondisi_barang) else Spacer(Modifier.width(1.dp))
+                    // Slot kiri selalu terisi (paralel dgn badge status transfer): kondisi untuk
+                    // "alat", atau badge kategori (Bahan/Scaffolding) bila kondisi tidak relevan.
+                    when {
+                        m.kondisi_barang != null -> KondisiBadge(m.kondisi_barang)
+                        item.kategori.isNotBlank() -> KategoriBadge(item.kategori)
+                        else -> Spacer(Modifier.width(1.dp))
+                    }
                     SyncStatusBadge(status = m.sync_status)
                 }
 
@@ -296,9 +307,21 @@ private fun RiwayatCard(item: RiwayatItem) {
             }
             is RiwayatItem.Transfer -> {
                 val t: TransferProyek = item.data
+                // Aksen ikon mengikuti status transfer (bukan navy statis) agar sejalan dgn
+                // semantik warna mutasi (masuk hijau / keluar merah).
+                val iconBg = when (t.status_transfer) {
+                    StatusTransfer.IN_TRANSIT -> AmberBg
+                    StatusTransfer.SELESAI -> GreenBg
+                    StatusTransfer.DIBATALKAN -> RedBg
+                }
+                val iconTint = when (t.status_transfer) {
+                    StatusTransfer.IN_TRANSIT -> AmberMain
+                    StatusTransfer.SELESAI -> GreenMain
+                    StatusTransfer.DIBATALKAN -> RedMain
+                }
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Box(modifier = Modifier.size(42.dp).clip(RoundedCornerShape(11.dp)).background(Color(0xFFeef1f3)), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Default.LocalShipping, null, tint = Navy, modifier = Modifier.size(22.dp))
+                    Box(modifier = Modifier.size(42.dp).clip(RoundedCornerShape(11.dp)).background(iconBg), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Default.LocalShipping, null, tint = iconTint, modifier = Modifier.size(22.dp))
                     }
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
@@ -319,21 +342,24 @@ private fun RiwayatCard(item: RiwayatItem) {
                 CardDivider()
                 Spacer(Modifier.height(12.dp))
 
+                // Baris badge sejajar dgn mutasi: status transfer (kiri) + status sinkron (kanan)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    if (t.proyek_tujuan.isNotBlank()) {
-                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-                            Icon(Icons.Default.Place, null, tint = TextSubtle, modifier = Modifier.size(14.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text("Ke: ${t.proyek_tujuan}", fontSize = 12.sp, color = TextSubtle, fontWeight = FontWeight.Medium)
-                        }
-                    } else {
-                        Spacer(Modifier.weight(1f))
-                    }
+                    StatusTransferBadge(t.status_transfer)
                     SyncStatusBadge(status = t.sync_status)
+                }
+
+                // Rute dipecah jadi dua MetaRow penuh (Dari / Ke) — konsisten dgn Lokasi/PJ mutasi
+                if (t.proyek_asal.isNotBlank()) {
+                    Spacer(Modifier.height(10.dp))
+                    MetaRow(Icons.Default.Home, "Dari", t.proyek_asal)
+                }
+                if (t.proyek_tujuan.isNotBlank()) {
+                    Spacer(Modifier.height(6.dp))
+                    MetaRow(Icons.Default.Place, "Ke", t.proyek_tujuan)
                 }
             }
         }
@@ -374,6 +400,45 @@ private fun KondisiBadge(kondisi: KondisiBarang) {
 }
 
 private data class Quad(val label: String, val bg: Color, val border: Color, val fg: Color)
+
+@Composable
+private fun KategoriBadge(kategori: String) {
+    // Netral (bukan hijau/kuning/merah) agar tidak menyiratkan status baik/buruk —
+    // hanya menandai jenis barang untuk mengisi slot kiri kartu mutasi bahan/scaffolding.
+    Row(
+        modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(Color(0xFFeef1f3))
+            .border(1.dp, BorderLight, RoundedCornerShape(999.dp)).padding(horizontal = 10.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Spacer(Modifier.size(7.dp).clip(CircleShape).background(TextSubtle))
+        Spacer(Modifier.width(6.dp))
+        Text(KategoriBarang.label(kategori), fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Navy)
+    }
+}
+
+@Composable
+private fun StatusTransferBadge(status: StatusTransfer) {
+    // Warna, ikon & label mengikuti TransferDetailScreen agar konsisten lintas layar
+    val (label, bg, border, fg) = when (status) {
+        StatusTransfer.IN_TRANSIT -> Quad("Dalam Perjalanan", AmberBg, AmberBorder, AmberText)
+        StatusTransfer.SELESAI -> Quad("Selesai", GreenBg, GreenBorder, GreenMain)
+        StatusTransfer.DIBATALKAN -> Quad("Dibatalkan", RedBg, RedBorder, RedMain)
+    }
+    val icon = when (status) {
+        StatusTransfer.IN_TRANSIT -> Icons.Default.HourglassEmpty
+        StatusTransfer.SELESAI -> Icons.Default.CheckCircle
+        StatusTransfer.DIBATALKAN -> Icons.Default.Info
+    }
+    Row(
+        modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(bg)
+            .border(1.dp, border, RoundedCornerShape(999.dp)).padding(horizontal = 10.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(icon, contentDescription = null, tint = fg, modifier = Modifier.size(13.dp))
+        Spacer(Modifier.width(6.dp))
+        Text(label, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = fg)
+    }
+}
 
 @Composable
 private fun FilterChip(label: String, selected: Boolean, onClick: () -> Unit) {

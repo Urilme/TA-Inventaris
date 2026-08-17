@@ -19,4 +19,4 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "TA Inventaris"
+rootProject.name = "SKN Inventaris"

@@ -5,35 +5,56 @@ import com.ta.konstruksi.data.local.entity.MasterKatalogEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
-interface MasterKatalogDao {
+abstract class MasterKatalogDao {
     // Katalog difilter per proyek: mandor hanya melihat barang di proyeknya sendiri.
     @Query("SELECT * FROM master_katalog WHERE id_proyek = :idProyek ORDER BY nama_barang ASC")
-    fun getAllKatalog(idProyek: String): Flow<List<MasterKatalogEntity>>
+    abstract fun getAllKatalog(idProyek: String): Flow<List<MasterKatalogEntity>>
 
     @Query("SELECT * FROM master_katalog WHERE sku_id = :skuId")
-    suspend fun getKatalogBySku(skuId: String): MasterKatalogEntity?
+    abstract suspend fun getKatalogBySku(skuId: String): MasterKatalogEntity?
 
     // Cari barang sejenis (nama sama) di suatu proyek — dipakai saat konfirmasi transfer masuk
     // untuk menambah stok ke item yang sudah ada, bukan membuat duplikat.
     @Query("SELECT * FROM master_katalog WHERE id_proyek = :idProyek AND nama_barang = :nama LIMIT 1")
-    suspend fun findByProyekAndNama(idProyek: String, nama: String): MasterKatalogEntity?
+    abstract suspend fun findByProyekAndNama(idProyek: String, nama: String): MasterKatalogEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsert(item: MasterKatalogEntity)
+    abstract suspend fun upsert(item: MasterKatalogEntity)
 
     @Query("DELETE FROM master_katalog WHERE sku_id = :skuId")
-    suspend fun delete(skuId: String)
+    abstract suspend fun delete(skuId: String)
+
+    @Query("SELECT stok_lokal FROM master_katalog WHERE sku_id = :skuId")
+    abstract suspend fun getStok(skuId: String): Int?
 
     @Query("UPDATE master_katalog SET stok_lokal = stok_lokal + :delta, sync_status = 'PENDING' WHERE sku_id = :skuId")
-    suspend fun updateStok(skuId: String, delta: Int)
+    abstract suspend fun updateStok(skuId: String, delta: Int)
+
+    /**
+     * Kurangi stok sebanyak [jumlah] dalam SATU transaksi atomik, HANYA bila stok mencukupi.
+     *
+     * Dipakai jalur transfer aset (pengurangan stok proyek asal). Sama seperti
+     * [LogMutasiDao.recordMutasiAtomic] pada jalur mutasi, guard baca-cek-tulis di dalam satu
+     * transaksi mencegah stok minus saat transfer dan mutasi \textit{check-out} terjadi bersamaan
+     * pada SKU yang sama (Concurrency Testing No. 7).
+     *
+     * @return true bila stok dikurangi; false bila stok tidak mencukupi (transaksi dibatalkan).
+     */
+    @Transaction
+    open suspend fun decrementStokJikaCukup(skuId: String, jumlah: Int): Boolean {
+        val current = getStok(skuId) ?: return false
+        if (current - jumlah < 0) return false   // stok tidak mencukupi → batalkan
+        updateStok(skuId, -jumlah)
+        return true
+    }
 
     // Sertakan IN_TRANSIT agar item yang tersinkron terputus dipulihkan pada siklus berikutnya
     @Query("SELECT * FROM master_katalog WHERE sync_status IN ('PENDING', 'IN_TRANSIT')")
-    suspend fun getPendingSync(): List<MasterKatalogEntity>
+    abstract suspend fun getPendingSync(): List<MasterKatalogEntity>
 
     @Query("UPDATE master_katalog SET sync_status = :status WHERE sku_id = :skuId")
-    suspend fun updateSyncStatus(skuId: String, status: String)
+    abstract suspend fun updateSyncStatus(skuId: String, status: String)
 
     @Query("UPDATE master_katalog SET sync_status = 'SYNCED' WHERE sku_id = :skuId")
-    suspend fun markSynced(skuId: String)
+    abstract suspend fun markSynced(skuId: String)
 }
