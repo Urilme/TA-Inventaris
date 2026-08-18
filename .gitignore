@@ -29,3 +29,7 @@ local.properties
 
 # === Firebase (opsional — buka komentar bila tak ingin commit config) ===
 # google-services.json
+
+# === Dokumen konteks Claude / panduan internal (jangan di-commit) ===
+CLAUDE.md
+IMPLEMENTATION_GUIDE.md
