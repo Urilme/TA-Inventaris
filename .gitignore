@@ -33,3 +33,6 @@ local.properties
 # === Dokumen konteks Claude / panduan internal (jangan di-commit) ===
 CLAUDE.md
 IMPLEMENTATION_GUIDE.md
+DOKUMEN_PENGENALAN_SISTEM_MITRA.html
+PANDUAN_DOKUMENTASI_PENGUJIAN.md
+SCREENSHOT_CHECKLIST.md
