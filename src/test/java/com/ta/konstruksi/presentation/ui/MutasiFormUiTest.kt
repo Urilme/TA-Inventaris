@@ -59,7 +59,7 @@ class MutasiFormUiTest {
 
     /** No. 29 + No. 13 (non-digit) — kolom jumlah hanya menerima digit, maksimal 5 angka. */
     @Test
-    fun no29_kolomJumlah_hanyaDigit_danMaksimalLimaAngka() {
+    fun kolomJumlah_hanyaDigit_danMaksimalLimaAngka() {
         compose.setContent {
             var teks by remember { mutableStateOf("1") }
             BasicTextField(
@@ -78,7 +78,7 @@ class MutasiFormUiTest {
 
     /** No. 13 — tombol SIMPAN nonaktif saat jumlah 0, dan aktif kembali saat jumlah valid. */
     @Test
-    fun no13_tombolSimpan_nonaktifSaatJumlahNol() {
+    fun tombolSimpan_nonaktifSaatJumlahNol() {
         compose.setContent {
             var jumlah by remember { mutableStateOf(0) }
             val canSave = FormInput.canSaveMutasi(
@@ -98,7 +98,7 @@ class MutasiFormUiTest {
 
     /** No. 30 — klik ganda pada SIMPAN saat menyimpan hanya memicu satu penyimpanan. */
     @Test
-    fun no30_tombolSimpan_cegahDoubleSubmit() {
+    fun tombolSimpan_cegahDoubleSubmit() {
         var submitCount = 0
         compose.setContent {
             var loading by remember { mutableStateOf(false) }
@@ -122,7 +122,7 @@ class MutasiFormUiTest {
 
     /** No. 8 — dropdown Kondisi Barang hanya muncul untuk kategori "alat". */
     @Test
-    fun no8_cascadingDropdown_kondisiHanyaUntukAlat() {
+    fun cascadingDropdown_kondisiHanyaUntukAlat() {
         compose.setContent {
             var kategori by remember { mutableStateOf(KategoriBarang.BAHAN) }
             Column {

@@ -68,7 +68,7 @@ class SearchFilterUiTest {
 
     /** No. 19 — mengetik kata kunci menyaring daftar secara reaktif. */
     @Test
-    fun no19_filterPencarian_menyaringDaftarSecaraReaktif() {
+    fun filterPencarian_menyaringDaftarSecaraReaktif() {
         compose.setContent { LayarPencarian() }
 
         compose.onNodeWithTag("cari").performTextInput("semen")
@@ -79,7 +79,7 @@ class SearchFilterUiTest {
 
     /** No. 26 — kata kunci yang tak ada di katalog menghasilkan daftar kosong. */
     @Test
-    fun no26_pencarianFiktif_menghasilkanDaftarKosong() {
+    fun pencarianFiktif_menghasilkanDaftarKosong() {
         compose.setContent { LayarPencarian() }
 
         compose.onNodeWithTag("cari").performTextInput("barangtidakada123")
@@ -89,7 +89,7 @@ class SearchFilterUiTest {
 
     /** No. 27 — payload SQL diperlakukan sebagai teks literal (in-memory), aman tanpa force close. */
     @Test
-    fun no27_injeksiKarakterPencarian_ditanganiAmanTanpaCrash() {
+    fun injeksiKarakterPencarian_ditanganiAmanTanpaCrash() {
         compose.setContent { LayarPencarian() }
 
         compose.onNodeWithTag("cari").performTextInput("'; DROP TABLE master_katalog;--")

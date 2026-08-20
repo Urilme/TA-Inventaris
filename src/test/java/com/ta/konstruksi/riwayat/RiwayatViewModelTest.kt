@@ -63,4 +63,40 @@ class RiwayatViewModelTest {
             cancelAndIgnoreRemainingEvents()
         }
     }
+
+    /**
+     * Concurrency Testing No. 4 (CT-04) — Integritas urutan saat data lampau tersinkron belakangan.
+     *
+     * Satu mutasi ber-`local_timestamp` 6 jam lampau (perangkat luring, baru sinkron kemudian)
+     * sengaja ditempatkan LEBIH DULU dalam daftar sumber, ditumpuk dengan mutasi "baru saja"
+     * ber-timestamp sekarang. Pengurutan riwayat murni memakai `local_timestamp` mentah
+     * (`sortedByDescending`) TANPA koreksi clock-skew — sesuai keputusan desain. Test ini
+     * MEMBUKTIKAN integritas urutan (item terbaru tetap di atas, item lampau tetap di bawah, tak
+     * ada distorsi), bukan mencari "koreksi jam" yang memang tidak ada di sistem.
+     */
+    @Test
+    fun `urutan riwayat tetap oleh local_timestamp meski data lampau disinkron belakangan`() = runTest {
+        val now = System.currentTimeMillis()
+        val enamJamLalu = now - 6 * 60 * 60 * 1000L
+        val katalog = FakeKatalogRepository().apply { put(masterKatalog(sku = "SKU-1", nama = "Semen")) }
+        val mutasi = FakeMutasiRepository().apply {
+            emit(
+                listOf(
+                    logMutasi(id = "TX-LAMPAU", sku = "SKU-1", ts = enamJamLalu), // sengaja di depan daftar
+                    logMutasi(id = "TX-BARU", sku = "SKU-1", ts = now)
+                )
+            )
+        }
+        val transfer = FakeTransferRepository()
+        val vm = RiwayatViewModel(mutasi, transfer, katalog)
+
+        vm.riwayatList.test {
+            var list = awaitItem()
+            while (list.size < 2) list = awaitItem()
+            assertThat(list).hasSize(2)
+            assertThat(list[0].timestamp).isEqualTo(now)          // transaksi baru → di atas
+            assertThat(list[1].timestamp).isEqualTo(enamJamLalu)  // data lampau → di bawah
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
 }
