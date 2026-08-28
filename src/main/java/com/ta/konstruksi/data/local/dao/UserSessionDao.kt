@@ -16,4 +16,10 @@ interface UserSessionDao {
 
     @Query("UPDATE user_session SET last_sync_timestamp = :timestamp")
     suspend fun updateLastSync(timestamp: Long)
+
+    @Query("UPDATE user_session SET last_sync_mutasi = :timestamp")
+    suspend fun updateLastSyncMutasi(timestamp: Long)
+
+    @Query("UPDATE user_session SET last_sync_transfer = :timestamp")
+    suspend fun updateLastSyncTransfer(timestamp: Long)
 }

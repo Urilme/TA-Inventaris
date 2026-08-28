@@ -105,6 +105,9 @@ class FakeKatalogRepository : KatalogRepository {
     private val flow = MutableStateFlow<List<MasterKatalog>>(emptyList())
     private fun publish() { flow.value = items.values.toList() }
 
+    // sku yang dianggap punya riwayat mutasi (hapus dilarang).
+    val skuBerriwayat = mutableSetOf<String>()
+
     fun put(item: MasterKatalog) { items[item.sku_id] = item; publish() }
     fun current(sku: String): MasterKatalog? = items[sku]
 
@@ -114,6 +117,7 @@ class FakeKatalogRepository : KatalogRepository {
         items.values.firstOrNull { it.id_proyek == idProyek && it.nama_barang == nama }
     override suspend fun upsertKatalog(item: MasterKatalog) = put(item)
     override suspend fun deleteKatalog(skuId: String) { items.remove(skuId); publish() }
+    override suspend fun hasRiwayatMutasi(skuId: String): Boolean = skuBerriwayat.contains(skuId)
     override suspend fun updateStokLokal(skuId: String, delta: Int) {
         items[skuId]?.let { put(it.copy(stok_lokal = it.stok_lokal + delta)) }
     }
@@ -130,10 +134,14 @@ class FakeMutasiRepository(private val katalog: FakeKatalogRepository? = null) :
     val recorded = mutableListOf<LogMutasi>()
     private val flow = MutableStateFlow<List<LogMutasi>>(emptyList())
 
+    // Mensimulasikan Room melempar exception I/O saat penyimpanan gagal.
+    var throwOnRecord: Throwable? = null
+
     fun emit(list: List<LogMutasi>) { recorded.clear(); recorded.addAll(list); flow.value = recorded.toList() }
 
     override fun getAllMutasi(): Flow<List<LogMutasi>> = flow
     override suspend fun recordMutasiWithStock(mutasi: LogMutasi, delta: Int): Boolean {
+        throwOnRecord?.let { throw it }
         if (katalog != null) {
             val item = katalog.getKatalogBySku(mutasi.sku_id) ?: return false
             if (delta < 0 && item.stok_lokal + delta < 0) return false

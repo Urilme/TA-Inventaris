@@ -1,0 +1,16 @@
+{
+  "name": "firestore-security-rules-tests",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Pengujian Firestore Security Rules & Firebase Auth (emulator) untuk Black-Box No. 45 - Penolakan Akun Dinonaktifkan. Terpisah dari build Android (Gradle); dijalankan lewat Node + Firebase Local Emulator Suite.",
+  "scripts": {
+    "test": "mocha --timeout 20000 *.test.js",
+    "test:emulators": "firebase emulators:exec --project demo-inventaris-test --only auth,firestore \"npm test\" --config ../firebase.json"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^4.0.1",
+    "firebase": "^11.0.2",
+    "firebase-admin": "^13.0.2",
+    "mocha": "^10.7.3"
+  }
+}

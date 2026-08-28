@@ -7,6 +7,7 @@ import com.ta.konstruksi.domain.model.TransferProyek
 import com.ta.konstruksi.domain.repository.KatalogRepository
 import com.ta.konstruksi.domain.repository.MutasiRepository
 import com.ta.konstruksi.domain.repository.TransferRepository
+import com.ta.konstruksi.util.JenisMutasi
 import com.ta.konstruksi.util.SyncStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -44,6 +45,8 @@ class RiwayatViewModel @Inject constructor(
 ) : ViewModel() {
 
     val filterState = MutableStateFlow<SyncStatus?>(null)
+    // Filter jenis mutasi (CHECK_IN/CHECK_OUT). null = semua jenis.
+    val jenisFilter = MutableStateFlow<JenisMutasi?>(null)
 
     // Menandai emisi pertama agar bisa membedakan "sedang memuat" vs "riwayat kosong"
     private val _initialLoaded = MutableStateFlow(false)
@@ -55,8 +58,9 @@ class RiwayatViewModel @Inject constructor(
         mutasiRepository.getAllMutasi(),
         transferRepository.getAllTransfer(),
         katalogRepository.getAllKatalog(),
-        filterState
-    ) { mutasiList, transferList, katalogList, filter ->
+        filterState,
+        jenisFilter
+    ) { mutasiList, transferList, katalogList, filter, jenis ->
         // Peta SKU -> nama barang agar riwayat menampilkan nama, bukan UUID
         val namaBySku = katalogList.associate { it.sku_id to it.nama_barang }
         // Peta SKU -> kategori: dipakai mengisi badge kategori pada kartu mutasi bahan/scaffolding
@@ -73,12 +77,20 @@ class RiwayatViewModel @Inject constructor(
             val nama = namaBySku[it.sku_id].orEmpty().ifBlank { it.nama_barang }
             items.add(RiwayatItem.Transfer(it, nama))
         }
-        val sorted = items.sortedByDescending { it.timestamp }
-        if (filter != null) sorted.filter { it.syncStatus == filter } else sorted
+        var hasil: List<RiwayatItem> = items.sortedByDescending { it.timestamp }
+        if (filter != null) hasil = hasil.filter { it.syncStatus == filter }
+        // Filter jenis mutasi hanya berlaku bagi mutasi; transfer (tak punya jenis_mutasi)
+        // disembunyikan saat filter jenis aktif — filter ini khusus arah gerak stok.
+        if (jenis != null) hasil = hasil.filter { it is RiwayatItem.Mutasi && it.data.jenis_mutasi == jenis }
+        hasil
     }.onEach { _initialLoaded.value = true }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun setFilter(status: SyncStatus?) {
         filterState.value = status
+    }
+
+    fun setJenisFilter(jenis: JenisMutasi?) {
+        jenisFilter.value = jenis
     }
 }

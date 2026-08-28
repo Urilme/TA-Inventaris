@@ -16,18 +16,10 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Test
 
 /**
- * Concurrency Testing No. 3 (CT-03) — Kegagalan parsial di tengah batch unggah (item ke-K gagal).
- *
- * Lima mutasi PENDING diunggah; unggahan item ke-3 (TX3) dibuat gagal. Membuktikan perilaku
- * DUA-PASS pada [SyncRepositoryImpl.syncPendingMutasi] APA ADANYA (tanpa mengubah kode produksi):
- *  - Pass 1  : SELURUH item ditandai IN_TRANSIT lebih dulu.
- *  - Pass 2  : diunggah satu per satu; TX1 \& TX2 → SYNCED, TX3 gagal → rollback ke PENDING,
- *              lalu loop berhenti (exception dilempar ulang oleh runCatching).
- *  - Akibatnya TX4 \& TX5 TIDAK sempat diproses di pass 2 → tetap tertinggal IN_TRANSIT.
- *
- * Ini AMAN karena [LogMutasiDao.getPending] menyertakan status IN_TRANSIT, sehingga TX4/TX5
- * tetap ikut ter-retry di siklus WorkManager berikutnya. Test ini mendokumentasikan/ membuktikan
- * perilaku tersebut, bukan menuntut perubahan.
+ * Uji kegagalan parsial di tengah batch unggah. Lima mutasi diunggah; item ke-3 gagal.
+ * Membuktikan perilaku dua-pass [SyncRepositoryImpl.syncPendingMutasi]: semua ditandai
+ * IN_TRANSIT dulu, lalu diunggah satu per satu; item gagal di-rollback ke PENDING dan loop
+ * berhenti, item sesudahnya tetap IN_TRANSIT (aman karena ikut retry berikutnya).
  */
 class SyncPartialBatchTest {
 

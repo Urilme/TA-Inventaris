@@ -4,13 +4,11 @@ import com.google.common.truth.Truth.assertThat
 import com.ta.konstruksi.domain.usecase.auth.LoginUseCase
 import com.ta.konstruksi.testutil.FakeAuthRepository
 import com.ta.konstruksi.testutil.userSession
+import com.ta.konstruksi.util.usernameToEmail
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 
-/**
- * F1 — Autentikasi. Uji validasi input & pendelegasian ke repository.
- * Login daring/luring nyata (Firebase) diuji manual (Black-Box TC-01..03).
- */
+/** Uji validasi input login & pendelegasian ke repository. */
 class LoginUseCaseTest {
 
     @Test
@@ -64,5 +62,24 @@ class LoginUseCaseTest {
         val useCase = LoginUseCase(FakeAuthRepository(loginResult = Result.failure(RuntimeException("kredensial salah"))))
         val r = useCase("budi", "salah")
         assertThat(r.isFailure).isTrue()
+    }
+
+    // ---- Validasi Format Username ----
+    // LoginUseCase HANYA mengecek kosong/tidak (lihat baris 11); tidak ada validator format
+    // client-side. Username mengandung "@" atau spasi tetap lolos ke usernameToEmail() dan
+    // baru ditolak oleh Firebase Auth SDK sendiri (format email tidak valid) di AuthRepositoryImpl.
+    // Test ini membuktikan BATAS yang sesungguhnya menyebabkan penolakan: usernameToEmail()
+    // menghasilkan alamat email yang cacat (mengandung "@" ganda atau spasi) untuk input semacam
+    // itu, sehingga penolakan oleh Firebase adalah konsekuensi yang dapat dijelaskan, bukan
+    // kebetulan.
+    @Test
+    fun `usernameToEmail menghasilkan alamat tidak valid untuk username mengandung at atau spasi`() {
+        val hasilAt = usernameToEmail("budi@rahasia")
+        val hasilSpasi = usernameToEmail("budi rahasia")
+
+        // "@" pada username menghasilkan email dengan "@" ganda (format tidak valid).
+        assertThat(hasilAt.count { it == '@' }).isEqualTo(2)
+        // Spasi pada username terbawa ke email (format tidak valid, email tidak boleh memuat spasi).
+        assertThat(hasilSpasi).contains(" ")
     }
 }

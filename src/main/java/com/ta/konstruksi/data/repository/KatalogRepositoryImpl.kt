@@ -1,5 +1,6 @@
 package com.ta.konstruksi.data.repository
 
+import com.ta.konstruksi.data.local.dao.LogMutasiDao
 import com.ta.konstruksi.data.local.dao.MasterKatalogDao
 import com.ta.konstruksi.data.local.dao.UserSessionDao
 import com.ta.konstruksi.domain.model.MasterKatalog
@@ -15,7 +16,8 @@ import javax.inject.Inject
 @OptIn(ExperimentalCoroutinesApi::class)
 class KatalogRepositoryImpl @Inject constructor(
     private val katalogDao: MasterKatalogDao,
-    private val userSessionDao: UserSessionDao
+    private val userSessionDao: UserSessionDao,
+    private val mutasiDao: LogMutasiDao
 ) : KatalogRepository {
 
     /** Proyek aktif si mandor; jatuh ke fallback bila sesi belum di-provision. */
@@ -43,6 +45,9 @@ class KatalogRepositoryImpl @Inject constructor(
 
     override suspend fun deleteKatalog(skuId: String) =
         katalogDao.delete(skuId)
+
+    override suspend fun hasRiwayatMutasi(skuId: String): Boolean =
+        mutasiDao.countBySku(skuId) > 0
 
     override suspend fun updateStokLokal(skuId: String, delta: Int) =
         katalogDao.updateStok(skuId, delta)

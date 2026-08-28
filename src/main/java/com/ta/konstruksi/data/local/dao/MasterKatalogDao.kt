@@ -31,14 +31,10 @@ abstract class MasterKatalogDao {
     abstract suspend fun updateStok(skuId: String, delta: Int)
 
     /**
-     * Kurangi stok sebanyak [jumlah] dalam SATU transaksi atomik, HANYA bila stok mencukupi.
+     * Kurangi stok dalam satu transaksi atomik, hanya bila mencukupi. Guard baca-cek-tulis
+     * mencegah stok minus saat akses bersamaan.
      *
-     * Dipakai jalur transfer aset (pengurangan stok proyek asal). Sama seperti
-     * [LogMutasiDao.recordMutasiAtomic] pada jalur mutasi, guard baca-cek-tulis di dalam satu
-     * transaksi mencegah stok minus saat transfer dan mutasi \textit{check-out} terjadi bersamaan
-     * pada SKU yang sama (Concurrency Testing No. 7).
-     *
-     * @return true bila stok dikurangi; false bila stok tidak mencukupi (transaksi dibatalkan).
+     * @return true bila stok dikurangi; false bila tidak mencukupi.
      */
     @Transaction
     open suspend fun decrementStokJikaCukup(skuId: String, jumlah: Int): Boolean {

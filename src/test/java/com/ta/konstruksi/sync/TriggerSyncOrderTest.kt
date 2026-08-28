@@ -11,21 +11,9 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Test
 
 /**
- * Concurrency Testing No. 1 (CT-01) — Orkestrasi sinkronisasi push→pull saat transisi
- * \textit{offline} → \textit{online} dengan antrean operasi lokal menumpuk.
- *
- * Menguji [TriggerSyncUseCase.invoke] end-to-end dengan [SyncRepository] di-mock. Membuktikan:
- * - Urutan push (katalog → mutasi → transfer) mendahului pull (katalog → proyek), sesuai desain
- *   di mana master data diunggah dulu sebelum menarik versi server (kursor delta dimajukan di
- *   dalam pullLatestKatalog).
- * - Bila seluruh push \& pull katalog sukses → invoke() mengembalikan Result.success.
- * - Bila salah satu push gagal, pull tetap dijalankan (best-effort) namun hasil akhir
- *   Result.failure berpesan "Sync sebagian gagal" — kegagalan tidak disembunyikan.
- *
- * Catatan desain (temuan analisis): PULL dua arah hanya berlaku untuk KATALOG \& PROYEK.
- * Mutasi/transfer bersifat push-only dari perangkat (website tidak menulis balik ke koleksi
- * tersebut), sehingga "eventual consistency dua arah" pada skenario ini adalah konsistensi
- * katalog, bukan mutasi.
+ * Uji orkestrasi sinkronisasi push→pull di [TriggerSyncUseCase.invoke] dengan repository di-mock.
+ * Membuktikan urutan push (katalog→mutasi→transfer) mendahului pull (katalog→proyek), success
+ * bila semua lancar, dan failure "Sync sebagian gagal" bila ada push yang gagal (pull tetap jalan).
  */
 class TriggerSyncOrderTest {
 
@@ -37,6 +25,8 @@ class TriggerSyncOrderTest {
         coEvery { repo.syncPendingMutasi() } returns Result.success(0)
         coEvery { repo.syncPendingTransfer() } returns Result.success(0)
         coEvery { repo.pullLatestKatalog() } returns Result.success(Unit)
+        coEvery { repo.pullLatestMutasi() } returns Result.success(Unit)
+        coEvery { repo.pullLatestTransfer() } returns Result.success(Unit)
         coEvery { repo.pullLatestProyek() } returns Result.success(Unit)
     }
 
@@ -52,6 +42,8 @@ class TriggerSyncOrderTest {
             repo.syncPendingMutasi()
             repo.syncPendingTransfer()
             repo.pullLatestKatalog()
+            repo.pullLatestMutasi()
+            repo.pullLatestTransfer()
             repo.pullLatestProyek()
         }
     }

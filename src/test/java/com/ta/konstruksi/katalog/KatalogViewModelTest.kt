@@ -2,10 +2,12 @@ package com.ta.konstruksi.katalog
 
 import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
+import com.ta.konstruksi.presentation.viewmodel.HapusKatalogState
 import com.ta.konstruksi.presentation.viewmodel.KatalogViewModel
 import com.ta.konstruksi.sync.SyncScheduler
 import com.ta.konstruksi.testutil.FakeKatalogRepository
 import com.ta.konstruksi.testutil.MainDispatcherRule
+import com.ta.konstruksi.testutil.masterKatalog
 import com.ta.konstruksi.util.KategoriBarang
 import com.ta.konstruksi.util.SyncStatus
 import io.mockk.mockk
@@ -14,10 +16,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Rule
 import org.junit.Test
 
-/**
- * F2 — Katalog. Tambah barang → muncul di daftar dengan SKU auto-generate & status PENDING.
- * (Logika ada di KatalogViewModel; guide §9 menyebut UpsertKatalogUseCase yang tidak ada di kode.)
- */
+/** Uji tambah barang: muncul di daftar dengan SKU auto-generate & status PENDING. */
 class KatalogViewModelTest {
 
     @get:Rule
@@ -72,5 +71,30 @@ class KatalogViewModelTest {
             assertThat(list.all { it.sku_id.startsWith("SKU-") }).isTrue()
             cancelAndIgnoreRemainingEvents()
         }
+    }
+
+    @Test
+    fun `hapus barang tanpa riwayat berhasil dan menghapus dari daftar`() = runTest {
+        katalog.put(masterKatalog(sku = "SKU-1", nama = "Semen"))
+        val vm = buatVm()
+
+        vm.hapusKatalog("SKU-1")
+
+        assertThat(vm.hapusState.value).isEqualTo(HapusKatalogState.Success)
+        assertThat(katalog.current("SKU-1")).isNull()
+    }
+
+    @Test
+    fun `hapus barang yang punya riwayat mutasi ditolak dan barang tetap ada`() = runTest {
+        katalog.put(masterKatalog(sku = "SKU-1", nama = "Semen"))
+        katalog.skuBerriwayat.add("SKU-1")   // barang sudah punya riwayat → hapus dilarang
+        val vm = buatVm()
+
+        vm.hapusKatalog("SKU-1")
+
+        val state = vm.hapusState.value
+        assertThat(state).isInstanceOf(HapusKatalogState.Error::class.java)
+        assertThat((state as HapusKatalogState.Error).message).contains("riwayat mutasi")
+        assertThat(katalog.current("SKU-1")).isNotNull()   // tidak terhapus
     }
 }

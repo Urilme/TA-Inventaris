@@ -9,6 +9,13 @@ abstract class LogMutasiDao {
     @Query("SELECT * FROM log_mutasi ORDER BY local_timestamp DESC")
     abstract fun getAllMutasi(): Flow<List<LogMutasiEntity>>
 
+    @Query("SELECT * FROM log_mutasi WHERE id_transaksi = :id")
+    abstract suspend fun getById(id: String): LogMutasiEntity?
+
+    // Jumlah riwayat mutasi untuk suatu barang — dipakai memblokir hapus katalog (FK RESTRICT).
+    @Query("SELECT COUNT(*) FROM log_mutasi WHERE sku_id = :skuId")
+    abstract suspend fun countBySku(skuId: String): Int
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     abstract suspend fun insert(mutasi: LogMutasiEntity)
 

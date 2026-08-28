@@ -19,7 +19,7 @@ class TransferRepositoryImpl @Inject constructor(
         transferDao.insert(transfer.toEntity())
 
     override suspend fun updateStatusTransfer(idTransfer: String, status: StatusTransfer) =
-        transferDao.updateStatus(idTransfer, status.name)
+        transferDao.updateStatus(idTransfer, status.name, System.currentTimeMillis())
 
     override suspend fun getPendingTransfer(): List<TransferProyek> =
         transferDao.getPending().map { it.toDomain() }

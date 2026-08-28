@@ -1,38 +1,22 @@
 package com.ta.konstruksi.util
 
 /**
- * Logika validasi & sanitasi input formulir Mutasi (F3) yang murni (tanpa efek samping),
- * diekstrak dari [com.ta.konstruksi.presentation.ui.mutasi.MutasiScreen] agar dapat diuji
- * langsung lewat Compose UI test / unit test tanpa merender seluruh layar berbasis Hilt.
- *
- * Menutup skenario Black-Box:
- * - No. 8  : kondisi barang hanya relevan untuk kategori "alat" (cascading dropdown).
- * - No. 13 : validasi input (non-digit ditolak, jumlah 0 menonaktifkan simpan).
- * - No. 29 : batas masukan angka maksimal [MAX_JUMLAH_DIGITS] digit.
- * - No. 30 : pencegahan double-submit (tombol nonaktif saat sedang menyimpan).
+ * Logika validasi & sanitasi input formulir mutasi (murni, tanpa efek samping),
+ * dipisah dari layar agar mudah diuji.
  */
 object FormInput {
 
-    /** Batas maksimum digit untuk kolom jumlah barang (mencegah overflow & salah ketik). */
+    /** Batas maksimum digit untuk kolom jumlah barang. */
     const val MAX_JUMLAH_DIGITS = 5
 
-    /**
-     * Menyaring masukan kolom jumlah: buang karakter non-digit dan potong ke
-     * [MAX_JUMLAH_DIGITS] angka. Dipakai pada `onValueChange` kolom jumlah.
-     */
+    /** Buang karakter non-digit dan potong ke [MAX_JUMLAH_DIGITS] angka. */
     fun sanitizeJumlah(raw: String): String =
         raw.filter { it.isDigit() }.take(MAX_JUMLAH_DIGITS)
 
-    /**
-     * Kondisi barang WAJIB (dan dropdown-nya ditampilkan) hanya untuk kategori "alat".
-     * Untuk "bahan"/"scaffolding" kondisi tidak relevan → null. Sesuai aturan F3.
-     */
+    /** Kondisi barang hanya wajib untuk kategori "alat". */
     fun isKondisiRequired(kategori: String?): Boolean = kategori == KategoriBarang.ALAT
 
-    /**
-     * Menentukan boleh-tidaknya tombol SIMPAN ditekan. Saat `isLoading` bernilai true
-     * (mutasi sedang disimpan) tombol nonaktif — inilah guard pencegah double-submit (No.30).
-     */
+    /** Boleh-tidaknya tombol simpan ditekan; nonaktif saat sedang menyimpan. */
     fun canSaveMutasi(
         hasItem: Boolean,
         jumlah: Int,

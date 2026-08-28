@@ -16,16 +16,9 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Test
 
 /**
- * Concurrency Testing No. 9 (CT-09) — Idempotensi \& Retry WorkManager.
- *
- * Membuktikan bahwa mengulang siklus sinkronisasi (mis. WorkManager retry setelah kegagalan
- * parsial, atau pemulihan item yang tertinggal berstatus IN_TRANSIT karena koneksi terputus di
- * tengah unggah) TIDAK menghasilkan dokumen ganda di Firestore. Jaminan idempotensi berasal dari
- * penulisan ke ID dokumen deterministik (`document(id_transaksi).set(...)` pada
- * [FirestoreDataSource.uploadMutasi]) sehingga penulisan ulang menimpa dokumen yang sama.
- *
- * Firestore di-mock (bukan network nyata) agar deterministik. Perhitungan dokumen fisik di server
- * juga divalidasi terpisah oleh stress test CT-05 (scripts/stress_test_sync.py, Zero Lost-Write).
+ * Uji idempotensi retry sinkronisasi: mengulang siklus tidak menghasilkan dokumen ganda di
+ * Firestore, karena penulisan memakai ID dokumen deterministik (`document(id_transaksi).set(...)`)
+ * sehingga penulisan ulang menimpa dokumen yang sama. Firestore di-mock agar deterministik.
  */
 class SyncIdempotencyTest {
 

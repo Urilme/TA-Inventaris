@@ -1,5 +1,6 @@
 package com.ta.konstruksi.presentation.viewmodel
 
+import android.database.sqlite.SQLiteConstraintException
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ta.konstruksi.domain.model.MasterKatalog
@@ -23,6 +24,13 @@ sealed interface KatalogUiState {
     data class Error(val message: String) : KatalogUiState
 }
 
+/** Hasil eksplisit penghapusan barang — dipakai UI untuk navigasi/snackbar. */
+sealed interface HapusKatalogState {
+    object Idle : HapusKatalogState
+    object Success : HapusKatalogState
+    data class Error(val message: String) : HapusKatalogState
+}
+
 @HiltViewModel
 class KatalogViewModel @Inject constructor(
     private val katalogRepository: KatalogRepository,
@@ -42,6 +50,9 @@ class KatalogViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow<KatalogUiState>(KatalogUiState.Idle)
     val uiState: StateFlow<KatalogUiState> = _uiState
+
+    private val _hapusState = MutableStateFlow<HapusKatalogState>(HapusKatalogState.Idle)
+    val hapusState: StateFlow<HapusKatalogState> = _hapusState
 
     fun tambahKatalog(
         kategori: String,
@@ -72,9 +83,33 @@ class KatalogViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Hapus barang dari katalog. Barang yang sudah punya riwayat mutasi TIDAK bisa dihapus
+     * (audit trail dijaga FK RESTRICT) — dicegah lewat pra-cek, dengan tangkapan constraint
+     * sebagai jaring pengaman. Hasil dipublikasikan via [hapusState].
+     */
     fun hapusKatalog(skuId: String) {
-        viewModelScope.launch { katalogRepository.deleteKatalog(skuId) }
+        viewModelScope.launch {
+            try {
+                if (katalogRepository.hasRiwayatMutasi(skuId)) {
+                    _hapusState.value = HapusKatalogState.Error(
+                        "Barang tidak bisa dihapus karena sudah memiliki riwayat mutasi."
+                    )
+                    return@launch
+                }
+                katalogRepository.deleteKatalog(skuId)
+                _hapusState.value = HapusKatalogState.Success
+            } catch (e: SQLiteConstraintException) {
+                _hapusState.value = HapusKatalogState.Error(
+                    "Barang tidak bisa dihapus karena sudah memiliki riwayat mutasi."
+                )
+            } catch (e: Exception) {
+                _hapusState.value = HapusKatalogState.Error(e.message ?: "Gagal menghapus barang")
+            }
+        }
     }
+
+    fun resetHapusState() { _hapusState.value = HapusKatalogState.Idle }
 
     fun resetUiState() { _uiState.value = KatalogUiState.Idle }
 }

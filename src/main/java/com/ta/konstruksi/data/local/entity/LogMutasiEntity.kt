@@ -17,12 +17,11 @@ import androidx.room.PrimaryKey
 data class LogMutasiEntity(
     @PrimaryKey val id_transaksi: String,
     val sku_id: String,
-    // defaultValue wajib cocok dengan DEFAULT pada MIGRATION_1_2 agar validasi skema Room lolos
-    @ColumnInfo(defaultValue = "''") val id_mandor: String = "",        // FK ke UserSession — pencatat
+    @ColumnInfo(defaultValue = "''") val id_mandor: String = "",        // pencatat
     @ColumnInfo(defaultValue = "''") val id_proyek: String = "",        // proyek tempat mutasi terjadi
     val jenis_mutasi: String,              // "CHECK_IN" | "CHECK_OUT"
     val jumlah: Int,
-    // NULLABLE — hanya diisi untuk kategori "alat"; bahan & scaffolding = null (aturan F3)
+    // Hanya diisi untuk kategori "alat"; bahan & scaffolding = null.
     val kondisi_barang: String? = null,    // KondisiBarang enum name atau null
     @ColumnInfo(defaultValue = "''") val lokasi_penggunaan: String = "",      // area spesifik dalam proyek
     @ColumnInfo(defaultValue = "''") val penanggungjawab: String = "",        // nama mandor pemegang aset

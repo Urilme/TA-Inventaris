@@ -29,8 +29,11 @@ import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -61,6 +64,7 @@ import com.ta.konstruksi.presentation.ui.theme.RedBg
 import com.ta.konstruksi.presentation.ui.theme.RedBorder
 import com.ta.konstruksi.presentation.ui.theme.RedMain
 import com.ta.konstruksi.presentation.ui.theme.TextSubtle
+import com.ta.konstruksi.presentation.viewmodel.HapusKatalogState
 import com.ta.konstruksi.presentation.viewmodel.KatalogViewModel
 import com.ta.konstruksi.presentation.viewmodel.RiwayatItem
 import com.ta.konstruksi.presentation.viewmodel.RiwayatViewModel
@@ -87,7 +91,20 @@ fun DetailBarangScreen(
         .filterIsInstance<RiwayatItem.Mutasi>()
         .map { it.data }
         .filter { it.sku_id == skuId }
+    // Barang yang punya riwayat mutasi tidak boleh dihapus (audit trail dijaga FK RESTRICT).
+    val adaRiwayat = mutasiBarang.isNotEmpty()
     var showHapus by remember { mutableStateOf(false) }
+
+    val hapusState by katalogViewModel.hapusState.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+    LaunchedEffect(hapusState) {
+        when (val s = hapusState) {
+            // Navigasi hanya bila penghapusan benar-benar berhasil.
+            is HapusKatalogState.Success -> { katalogViewModel.resetHapusState(); onBack() }
+            is HapusKatalogState.Error -> { snackbarHostState.showSnackbar(s.message); katalogViewModel.resetHapusState() }
+            else -> {}
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize().background(AppBackground)) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -174,35 +191,45 @@ fun DetailBarangScreen(
                         items(mutasiBarang) { m -> MutasiRingkasCard(m) }
                     }
 
-                    // Zona bahaya — hapus barang dari katalog (butuh konfirmasi)
+                    // Zona bahaya — hapus barang dari katalog (dinonaktifkan bila ada riwayat)
                     item {
+                        val bgWarna = if (adaRiwayat) Color(0xFFF2F4F5) else RedBg
+                        val garisWarna = if (adaRiwayat) BorderLight else RedBorder
+                        val kontenWarna = if (adaRiwayat) TextSubtle else RedMain
                         Box(
                             modifier = Modifier.fillMaxWidth().padding(top = 8.dp).height(54.dp)
                                 .clip(RoundedCornerShape(14.dp))
-                                .border(1.5.dp, RedBorder, RoundedCornerShape(14.dp)).background(RedBg)
-                                .clickable { showHapus = true },
+                                .border(1.5.dp, garisWarna, RoundedCornerShape(14.dp)).background(bgWarna)
+                                .then(if (adaRiwayat) Modifier else Modifier.clickable { showHapus = true }),
                             contentAlignment = Alignment.Center
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.DeleteOutline, contentDescription = null, tint = RedMain, modifier = Modifier.size(22.dp))
+                                Icon(Icons.Default.DeleteOutline, contentDescription = null, tint = kontenWarna, modifier = Modifier.size(22.dp))
                                 Spacer(Modifier.width(10.dp))
-                                Text("Hapus Barang dari Katalog", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = RedMain)
+                                Text("Hapus Barang dari Katalog", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = kontenWarna)
                             }
+                        }
+                        if (adaRiwayat) {
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                "Barang tidak dapat dihapus karena sudah memiliki riwayat mutasi.",
+                                fontSize = 12.sp, color = TextSubtle
+                            )
                         }
                     }
 
                     item { Spacer(Modifier.height(8.dp)) }
                 }
 
-                // Guard hapus — barang dikeluarkan dari katalog lokal, lalu kembali ke daftar
-                if (showHapus) {
+                // Guard hapus — hanya untuk barang tanpa riwayat. Navigasi ditangani oleh hapusState.
+                if (showHapus && !adaRiwayat) {
                     ConfirmActionDialog(
                         icon = Icons.Default.DeleteOutline,
                         accent = RedMain,
                         accentBg = RedBg,
                         title = "Hapus Barang",
                         subtitle = item.nama_barang,
-                        message = "Barang ini akan dihapus dari katalog. Riwayat mutasi yang sudah tercatat tetap tersimpan. Tindakan ini tidak bisa diurungkan.",
+                        message = "Barang ini akan dihapus dari katalog. Tindakan ini tidak bisa diurungkan.",
                         confirmLabel = "Ya, Hapus",
                         confirmColor = RedMain,
                         confirmIcon = Icons.Default.DeleteOutline,
@@ -210,12 +237,16 @@ fun DetailBarangScreen(
                         onConfirm = {
                             showHapus = false
                             katalogViewModel.hapusKatalog(item.sku_id)
-                            onBack()
                         }
                     )
                 }
             }
         }
+
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter).padding(start = 16.dp, end = 16.dp, bottom = 24.dp)
+        )
     }
 }
 

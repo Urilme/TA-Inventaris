@@ -16,16 +16,10 @@ import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 
 /**
- * Implementasi autentikasi OFFLINE-FIRST berbasis Firebase Authentication.
- *
- * - Daring: kredensial diverifikasi ke FirebaseAuth, lalu sesi disimpan ke Room ([UserSessionDao])
- *   agar aplikasi tetap bisa dipakai saat luring.
- * - Luring: bila sudah pernah login (sesi tersimpan untuk username yang sama), pengguna tetap
- *   dapat masuk memakai sesi lokal. Login PERTAMA tetap memerlukan internet.
- *
- * Login berbasis USERNAME: mandor tidak punya email nyata. Username diubah jadi email sintetis
- * "<username>@skn.app" ([usernameToEmail]) sebelum dikirim ke Firebase, karena Firebase Auth
- * hanya menyediakan provider email/password. Akun mandor dibuat oleh admin (di luar app).
+ * Autentikasi offline-first berbasis Firebase Authentication.
+ * Daring: verifikasi ke FirebaseAuth lalu simpan sesi ke Room. Luring: pakai sesi lokal
+ * bila username cocok (login pertama tetap butuh internet). Username diubah jadi email
+ * sintetis "<username>@skn.app" sebelum dikirim ke Firebase.
  */
 class AuthRepositoryImpl @Inject constructor(
     private val userSessionDao: UserSessionDao,
@@ -38,7 +32,7 @@ class AuthRepositoryImpl @Inject constructor(
         if (usernameBersih.isBlank() || password.isBlank()) {
             return Result.failure(IllegalArgumentException("Username dan kata sandi tidak boleh kosong"))
         }
-        // Validasi longgar: username tidak boleh mengandung '@' atau spasi (bukan email, satu kata).
+        // Username tidak boleh mengandung '@' atau spasi.
         if (usernameBersih.contains('@') || usernameBersih.any { it.isWhitespace() }) {
             return Result.failure(IllegalArgumentException("Username tidak valid"))
         }
@@ -51,15 +45,22 @@ class AuthRepositoryImpl @Inject constructor(
 
             val token = runCatching { user.getIdToken(false).await().token }.getOrNull().orEmpty()
             val session = buatSesiDari(user, usernameBersih, token)
-            userSessionDao.upsert(session.toEntity())
+            // Pertahankan kursor delta mutasi/transfer milik sesi lama (upsert REPLACE menimpa baris).
+            val existing = userSessionDao.getSession()?.takeIf { it.id_mandor == user.uid }
+            userSessionDao.upsert(
+                session.toEntity().copy(
+                    last_sync_mutasi = existing?.last_sync_mutasi ?: 0L,
+                    last_sync_transfer = existing?.last_sync_transfer ?: 0L
+                )
+            )
             Result.success(session)
         } catch (e: FirebaseAuthInvalidUserException) {
-            // Akun tidak terdaftar / dinonaktifkan
+            // Akun tidak terdaftar / dinonaktifkan.
             Result.failure(Exception("Akun tidak ditemukan. Hubungi admin untuk pendaftaran."))
         } catch (e: FirebaseAuthInvalidCredentialsException) {
             Result.failure(Exception("Username atau kata sandi salah"))
         } catch (e: FirebaseNetworkException) {
-            // Luring: izinkan masuk hanya bila sesi tersimpan cocok dengan username yang dimasukkan
+            // Luring: pakai sesi lokal bila cocok.
             loginLuring(usernameBersih)
         } catch (e: Exception) {
             Result.failure(Exception(e.message ?: "Login gagal"))
@@ -88,18 +89,15 @@ class AuthRepositoryImpl @Inject constructor(
         userSessionDao.getSession() != null || firebaseAuth.currentUser != null
 
     /**
-     * Bentuk [UserSession] dari [FirebaseUser]. Profil mandor (nama, role, proyek yang ditugaskan)
-     * diambil dari dokumen Firestore `users/{uid}` yang di-provision oleh admin/website.
-     * Bila dokumen belum ada, dipakai nilai turunan/fallback agar login tetap berhasil.
-     * `last_sync_timestamp` & proyek sebelumnya dipertahankan bila sesi lama milik uid yang sama.
-     * Username diturunkan dari bagian sebelum '@' pada email sintetis Firebase.
+     * Bentuk [UserSession] dari [FirebaseUser]. Profil mandor diambil dari users/{uid};
+     * bila belum ada dipakai nilai fallback agar login tetap berhasil.
      */
     private suspend fun buatSesiDari(user: FirebaseUser, usernameInput: String, token: String): UserSession {
         val username = user.email?.substringBefore("@")?.takeIf { it.isNotBlank() } ?: usernameInput
         val existing = userSessionDao.getSession()?.takeIf { it.id_mandor == user.uid }
         val lastSync = existing?.last_sync_timestamp ?: 0L
 
-        // Profil dari server (opsional — tidak boleh menggagalkan login bila luring/tak ada dokumen)
+        // Profil dari server (opsional — tidak menggagalkan login bila gagal).
         val profil = runCatching { firestore.fetchUserProfile(user.uid) }.getOrNull()
 
         val nama = profil?.nama?.takeIf { it.isNotBlank() }

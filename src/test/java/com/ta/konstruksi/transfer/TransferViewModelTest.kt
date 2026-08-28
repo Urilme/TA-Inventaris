@@ -20,11 +20,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Rule
 import org.junit.Test
 
-/**
- * F4 — Transfer Aset. Logika create/confirm/cancel ada di TransferViewModel
- * (guide §9 menyebut Create/ConfirmTransferUseCase yang tidak ada di kode — diuji di tempat
- * logikanya benar-benar berada, sesuai aturan "jangan mengarang API").
- */
+/** Uji logika transfer aset (create/confirm/cancel) di TransferViewModel. */
 class TransferViewModelTest {
 
     @get:Rule

@@ -77,19 +77,71 @@ class SyncRepositoryImpl @Inject constructor(
         val proyek = userSessionDao.getSession()?.id_proyek.orEmpty()
         val result = firestore.pullKatalog(since, proyek)
 
-        // Last-Write-Wins: remote hanya menimpa lokal bila local_timestamp-nya lebih baru.
         result.items.forEach { remote ->
             val local = katalogDao.getKatalogBySku(remote.sku_id)
-            if (local == null || remote.local_timestamp > local.local_timestamp) {
+            if (bolehTimpa(local?.sync_status, local?.local_timestamp, remote.local_timestamp)) {
                 katalogDao.upsert(remote)
             }
-            // else: versi lokal lebih baru → dipertahankan (menang LWW)
         }
 
         // Majukan kursor delta ke server_timestamp terbesar yang telah dikonsumsi
         if (result.latestServerMillis > since) {
             updateLastSyncTimestamp(result.latestServerMillis)
         }
+    }
+
+    override suspend fun pullLatestMutasi(): Result<Unit> = runCatching {
+        val session = userSessionDao.getSession()
+        val since = session?.last_sync_mutasi ?: 0L
+        val proyek = session?.id_proyek.orEmpty()
+        val result = firestore.pullMutasi(since, proyek)
+
+        result.items.forEach { remote ->
+            // FK log_mutasi → master_katalog (RESTRICT): lewati mutasi yang barang induknya belum
+            // ada di katalog lokal agar tak menggagalkan seluruh sync. Normalnya katalog proyek
+            // yang sama sudah ditarik lebih dulu sehingga induknya tersedia.
+            if (katalogDao.getKatalogBySku(remote.sku_id) == null) return@forEach
+            val local = mutasiDao.getById(remote.id_transaksi)
+            if (bolehTimpa(local?.sync_status, local?.local_timestamp, remote.local_timestamp)) {
+                mutasiDao.insert(remote)
+            }
+        }
+
+        if (result.latestServerMillis > since) {
+            userSessionDao.updateLastSyncMutasi(result.latestServerMillis)
+        }
+    }
+
+    override suspend fun pullLatestTransfer(): Result<Unit> = runCatching {
+        val session = userSessionDao.getSession()
+        val since = session?.last_sync_transfer ?: 0L
+        // Filter transfer berbasis NAMA proyek (dokumen menyimpan nama, bukan id).
+        val namaProyek = session?.nama_proyek.orEmpty()
+        val result = firestore.pullTransfer(since, namaProyek)
+
+        result.items.forEach { remote ->
+            val local = transferDao.getById(remote.id_transfer)
+            if (bolehTimpa(local?.sync_status, local?.local_timestamp, remote.local_timestamp)) {
+                transferDao.insert(remote)
+            }
+        }
+
+        if (result.latestServerMillis > since) {
+            userSessionDao.updateLastSyncTransfer(result.latestServerMillis)
+        }
+    }
+
+    /**
+     * Aturan penerapan versi server ke lokal:
+     * - baris belum ada di lokal → ambil.
+     * - baris lokal masih PENDING/IN_TRANSIT (perubahan belum ter-push) → JANGAN timpa; perubahan
+     *   lokal otoritatif sampai terkirim, lalu menang LWW di server.
+     * - baris lokal SYNCED → Last-Write-Wins: remote menang hanya bila local_timestamp-nya lebih baru.
+     */
+    private fun bolehTimpa(localStatus: String?, localTimestamp: Long?, remoteTimestamp: Long): Boolean {
+        if (localStatus == null) return true
+        if (localStatus != SyncStatus.SYNCED.name) return false
+        return remoteTimestamp > (localTimestamp ?: 0L)
     }
 
     override suspend fun pullLatestProyek(): Result<Unit> = runCatching {

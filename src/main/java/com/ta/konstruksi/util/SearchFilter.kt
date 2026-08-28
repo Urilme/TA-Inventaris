@@ -1,13 +1,9 @@
 package com.ta.konstruksi.util
 
 /**
- * Predikat pencarian in-memory untuk daftar Katalog & Riwayat, diekstrak dari Composable
- * (KatalogScreen / RiwayatScreen) agar dapat diuji langsung.
- *
- * Penting untuk keamanan: penyaringan dilakukan atas daftar yang SUDAH dimuat ke memori memakai
- * [String.contains] (bukan kueri SQL `LIKE`), sehingga karakter spesial/SQL diperlakukan sebagai
- * teks literal — injeksi SQL secara struktural tidak mungkin (Black-Box No. 27). Menutup pula
- * skenario filter pencarian reaktif (No. 19) dan pencarian fiktif → hasil kosong (No. 26).
+ * Predikat pencarian in-memory untuk daftar Katalog & Riwayat, dipisah dari Composable
+ * agar mudah diuji. Menyaring atas daftar yang sudah dimuat memakai [String.contains]
+ * (bukan kueri SQL), sehingga karakter spesial diperlakukan sebagai teks literal.
  */
 object SearchFilter {
 

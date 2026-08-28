@@ -32,22 +32,11 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * Compose UI test untuk logika formulir Mutasi (F3) yang hidup di lapisan Composable —
- * TIDAK terjangkau unit test JVM biasa. Widget Compose asli dirender lalu diinteraksi
- * (ketik/klik) melalui kerangka pengujian Compose; logika transformasi/validasi memakai
- * fungsi PRODUKSI [FormInput] yang sama persis dipakai
- * [com.ta.konstruksi.presentation.ui.mutasi.MutasiScreen].
+ * Compose UI test untuk logika formulir mutasi di lapisan Composable, memakai fungsi produksi
+ * [FormInput] yang sama. Dijalankan di JVM lewat Robolectric (SDK 34).
  *
- * Dijalankan di JVM lewat Robolectric (runtime Android tersimulasi, SDK 34) — bukan Espresso —
- * karena satu-satunya emulator yang tersedia (API 37, image pratinjau) belum kompatibel dengan
- * Espresso 3.6.1 (InputManager.getInstance dihapus di API baru). Kode uji identik dengan versi
- * instrumented dan dapat pula dijalankan pada perangkat/emulator API stabil.
- *
- * Menutup skenario Black-Box:
- * - No. 8  : Cascading Dropdown  — kondisi barang hanya muncul untuk kategori "alat".
- * - No. 13 : Validasi Input      — non-digit ditolak; jumlah 0 menonaktifkan SIMPAN.
- * - No. 29 : Batas Masukan Angka — kolom jumlah dibatasi 5 digit.
- * - No. 30 : Cegah Double-Submit — tombol SIMPAN nonaktif saat sedang menyimpan.
+ * Mencakup: dropdown kondisi hanya untuk "alat", validasi input (non-digit ditolak, jumlah 0
+ * menonaktifkan simpan), batas 5 digit, dan cegah double-submit saat menyimpan.
  */
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)

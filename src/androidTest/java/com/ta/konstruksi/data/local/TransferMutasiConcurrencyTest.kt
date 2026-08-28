@@ -21,18 +21,10 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Concurrency Testing No. 7 (CT-07) — Transfer + Mutasi bersamaan pada SKU yang sama.
- *
- * Menguji invariant terpenting sinkronisasi luring: **stok lokal tidak boleh minus** meskipun
- * operasi transfer (pengurangan stok proyek asal) dan mutasi \textit{check-out} terjadi
- * berbarengan pada SKU yang sama. Jalur pengurangan stok yang diuji identik dengan produksi:
- * - Transfer  : [MasterKatalogDao.updateStok] (dipakai TransferViewModel.createTransfer via
- *               KatalogRepository.updateStokLokal) — pengurangan atomik per baris,
- *               melalui [MasterKatalogDao.decrementStokJikaCukup] yang terjaga stok.
- * - Mutasi    : [LogMutasiDao.recordMutasiAtomic] — transaksi atomik baca-cek-tulis.
- *
- * Memakai Room in-memory (satu koneksi → operasi terserialisasi) agar cepat & terisolasi.
- * Butuh perangkat/emulator (androidTest).
+ * Uji transfer + mutasi bersamaan pada SKU yang sama: stok lokal tidak boleh minus.
+ * Jalur pengurangan stok identik dengan produksi — transfer via
+ * [MasterKatalogDao.decrementStokJikaCukup] dan mutasi via [LogMutasiDao.recordMutasiAtomic],
+ * keduanya atomik baca-cek-tulis. Memakai Room in-memory (androidTest).
  */
 @RunWith(AndroidJUnit4::class)
 class TransferMutasiConcurrencyTest {

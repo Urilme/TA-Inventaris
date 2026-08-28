@@ -1,10 +1,25 @@
 rules_version = '2';
 
 // ==========================================================================
-// PERINGATAN: Rules ini TERBUKA (tanpa autentikasi) dan hanya untuk
-// pengujian/skripsi. Aplikasi saat ini login secara lokal (belum pakai
-// FirebaseAuth), sehingga request.auth = null. Untuk produksi, wire-up
-// FirebaseAuth lalu ganti `if true` menjadi `if request.auth != null`.
+// Rules mensyaratkan autentikasi (request.auth != null) untuk semua akses.
+// Diperketat dari versi sebelumnya yang sempat TERBUKA total (if true) demi
+// kemudahan pengujian awal skripsi. Verifikasi sebelum pengetatan (Agustus
+// 2026): baik aplikasi mobile (TA-Inventaris, login via FirebaseAuth dengan
+// username->email sintetis @skn.app, sesi SDK dipertahankan secara lokal
+// utk mode luring) maupun website admin (TA-Web-Inventaris, seluruh akses
+// Firestore dibungkus ProtectedRoute setelah signInWithEmailAndPassword)
+// SELALU mengakses Firestore dalam konteks user yang sudah authenticated,
+// sehingga request.auth != null terpenuhi pada semua panggilan produksi.
+//
+// Ini juga menegakkan Black-Box No. 45 (Penolakan Akun Dinonaktifkan):
+// begitu akun dicabut/dinonaktifkan admin, Firebase Auth menolak penerbitan
+// ID token baru (login online berikutnya gagal), sehingga permintaan
+// Firestore berikutnya otomatis tidak lagi menyertakan request.auth yang
+// valid dan ditolak rules ini. Batasan yang perlu dicatat: token yang SUDAH
+// terbit sebelum akun dinonaktifkan tetap kriptografis valid sampai masa
+// berlakunya habis (bawaan Firebase, bukan sesuatu yang bisa dikendalikan
+// dari rules), sehingga proteksi ini efektif pada percobaan LOGIN ULANG,
+// bukan pada sesi yang sedang berjalan aktif saat itu juga.
 // ==========================================================================
 
 service cloud.firestore {
@@ -12,20 +27,20 @@ service cloud.firestore {
 
     // Hanya 4 koleksi yang dipakai aplikasi
     match /katalog/{doc} {
-      allow read, write: if true;
+      allow read, write: if request.auth != null;
     }
     match /mutasi/{doc} {
-      allow read, write: if true;
+      allow read, write: if request.auth != null;
     }
     match /transfer/{doc} {
-      allow read, write: if true;
+      allow read, write: if request.auth != null;
     }
     match /users/{doc} {
-      allow read, write: if true;
+      allow read, write: if request.auth != null;
     }
-    // Registry proyek — app hanya membaca; tulis dilakukan website admin (di sini dibuka untuk seeding uji)
+    // Registry proyek — app mobile hanya membaca; tulis dilakukan website admin.
     match /proyek/{doc} {
-      allow read, write: if true;
+      allow read, write: if request.auth != null;
     }
 
     // Koleksi lain tetap tertutup secara default (tidak ada match = ditolak)

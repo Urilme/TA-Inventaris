@@ -22,16 +22,11 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * Compose UI test untuk pencarian katalog/riwayat pada lapisan antarmuka. Kolom pencarian
- * Compose asli dirender lalu diketik; penyaringan memakai predikat PRODUKSI
- * [SearchFilter.matchesKatalog] yang sama dipakai KatalogScreen/RiwayatScreen. Dijalankan di
- * JVM lewat Robolectric (SDK 34).
+ * Compose UI test untuk pencarian katalog/riwayat, memakai predikat produksi
+ * [SearchFilter.matchesKatalog] yang sama. Dijalankan di JVM lewat Robolectric (SDK 34).
  *
- * Menutup skenario Black-Box:
- * - No. 19 : Filter Pencarian        — daftar tersaring reaktif sesuai kata kunci.
- * - No. 26 : Pencarian Katalog Fiktif — kata kunci tak dikenal → daftar kosong.
- * - No. 27 : Injeksi Karakter Pencarian — payload SQL diperlakukan literal (in-memory
- *            String.contains, BUKAN kueri SQL) sehingga aman, tanpa force close.
+ * Mencakup: filter reaktif sesuai kata kunci, kata kunci tak dikenal → daftar kosong, dan
+ * payload SQL diperlakukan literal (String.contains in-memory, bukan kueri SQL).
  */
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)

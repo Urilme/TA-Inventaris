@@ -2,6 +2,7 @@ package com.ta.konstruksi.riwayat
 
 import app.cash.turbine.test
 import com.google.common.truth.Truth.assertThat
+import com.ta.konstruksi.presentation.viewmodel.RiwayatItem
 import com.ta.konstruksi.presentation.viewmodel.RiwayatViewModel
 import com.ta.konstruksi.testutil.FakeKatalogRepository
 import com.ta.konstruksi.testutil.FakeMutasiRepository
@@ -10,15 +11,13 @@ import com.ta.konstruksi.testutil.MainDispatcherRule
 import com.ta.konstruksi.testutil.logMutasi
 import com.ta.konstruksi.testutil.masterKatalog
 import com.ta.konstruksi.testutil.transferProyek
+import com.ta.konstruksi.util.JenisMutasi
 import com.ta.konstruksi.util.SyncStatus
 import kotlinx.coroutines.test.runTest
 import org.junit.Rule
 import org.junit.Test
 
-/**
- * F5 — Riwayat. Gabungan mutasi+transfer terurut terbaru, pelabelan nama via katalog,
- * dan filter berdasarkan status sinkronisasi.
- */
+/** Uji riwayat: gabungan mutasi+transfer terurut terbaru, pelabelan nama, dan filter status. */
 class RiwayatViewModelTest {
 
     @get:Rule
@@ -64,15 +63,62 @@ class RiwayatViewModelTest {
         }
     }
 
+    @Test
+    fun `filter jenis CHECK_IN hanya menampilkan mutasi masuk dan menyembunyikan transfer`() = runTest {
+        val katalog = FakeKatalogRepository().apply { put(masterKatalog(sku = "SKU-1", nama = "Semen")) }
+        val mutasi = FakeMutasiRepository().apply {
+            emit(
+                listOf(
+                    logMutasi(id = "TX-IN", sku = "SKU-1", jenis = JenisMutasi.CHECK_IN, ts = 100),
+                    logMutasi(id = "TX-OUT", sku = "SKU-1", jenis = JenisMutasi.CHECK_OUT, ts = 150)
+                )
+            )
+        }
+        val transfer = FakeTransferRepository().apply { seed(transferProyek(id = "TR-1", sku = "SKU-1", ts = 200)) }
+        val vm = RiwayatViewModel(mutasi, transfer, katalog)
+
+        vm.setJenisFilter(JenisMutasi.CHECK_IN)
+
+        vm.riwayatList.test {
+            var list = awaitItem()
+            while (list.size != 1) list = awaitItem()
+            assertThat(list).hasSize(1)                                  // transfer & CHECK_OUT tersembunyi
+            val item = list[0]
+            assertThat(item).isInstanceOf(RiwayatItem.Mutasi::class.java)
+            assertThat((item as RiwayatItem.Mutasi).data.jenis_mutasi).isEqualTo(JenisMutasi.CHECK_IN)
+            assertThat(list.none { it is RiwayatItem.Transfer }).isTrue()
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `filter jenis CHECK_OUT hanya menampilkan mutasi keluar`() = runTest {
+        val katalog = FakeKatalogRepository().apply { put(masterKatalog(sku = "SKU-1", nama = "Semen")) }
+        val mutasi = FakeMutasiRepository().apply {
+            emit(
+                listOf(
+                    logMutasi(id = "TX-IN", sku = "SKU-1", jenis = JenisMutasi.CHECK_IN, ts = 100),
+                    logMutasi(id = "TX-OUT", sku = "SKU-1", jenis = JenisMutasi.CHECK_OUT, ts = 150)
+                )
+            )
+        }
+        val transfer = FakeTransferRepository().apply { seed(transferProyek(id = "TR-1", sku = "SKU-1", ts = 200)) }
+        val vm = RiwayatViewModel(mutasi, transfer, katalog)
+
+        vm.setJenisFilter(JenisMutasi.CHECK_OUT)
+
+        vm.riwayatList.test {
+            var list = awaitItem()
+            while (list.size != 1) list = awaitItem()
+            assertThat((list[0] as RiwayatItem.Mutasi).data.jenis_mutasi).isEqualTo(JenisMutasi.CHECK_OUT)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
     /**
-     * Concurrency Testing No. 4 (CT-04) — Integritas urutan saat data lampau tersinkron belakangan.
-     *
-     * Satu mutasi ber-`local_timestamp` 6 jam lampau (perangkat luring, baru sinkron kemudian)
-     * sengaja ditempatkan LEBIH DULU dalam daftar sumber, ditumpuk dengan mutasi "baru saja"
-     * ber-timestamp sekarang. Pengurutan riwayat murni memakai `local_timestamp` mentah
-     * (`sortedByDescending`) TANPA koreksi clock-skew — sesuai keputusan desain. Test ini
-     * MEMBUKTIKAN integritas urutan (item terbaru tetap di atas, item lampau tetap di bawah, tak
-     * ada distorsi), bukan mencari "koreksi jam" yang memang tidak ada di sistem.
+     * Integritas urutan saat data lampau disinkron belakangan. Mutasi ber-timestamp 6 jam
+     * lampau ditaruh lebih dulu di daftar sumber; pengurutan memakai local_timestamp mentah,
+     * item terbaru tetap di atas.
      */
     @Test
     fun `urutan riwayat tetap oleh local_timestamp meski data lampau disinkron belakangan`() = runTest {

@@ -7,7 +7,7 @@ import com.ta.konstruksi.testutil.userSession
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 
-/** F1 — Logout membersihkan sesi lokal (TC-04). */
+/** Logout membersihkan sesi lokal. */
 class LogoutUseCaseTest {
 
     @Test

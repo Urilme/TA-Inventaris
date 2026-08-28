@@ -23,23 +23,11 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Concurrency Testing No. 6 (CT-06) — Konflik agregat stok pada dua "perangkat" (LWW).
+ * Uji dua checkout paralel pada SKU yang sama (3 dan 2 unit dari stok 10).
  *
- * Dua perangkat men-checkout SKU yang sama secara paralel (A: 3 unit, B: 2 unit) terhadap stok
- * awal 10. Konflik LWW yang sesungguhnya BUKAN di dokumen mutasi (tiap mutasi = dokumen unik
- * ber-UUID, tak pernah bentrok), melainkan di AGREGAT `stok_lokal`. Test ini memvalidasi lapisan
- * Room lokal:
- *  - AUDIT TRAIL: [LogMutasiDao.recordMutasiAtomic] bersifat @Transaction, sehingga KEDUA baris
- *    mutasi selalu tersimpan tanpa ada yang hilang (invariant utama yang harus selalu benar).
- *  - STOK: karena kedua transaksi atomik terserialisasi pada satu koneksi Room, hasil akhir
- *    deterministik = 10 − 3 − 2 = 5, tak pernah minus/rusak, apa pun urutan commit-nya.
- *
- * Divergensi `stok_lokal` ANTAR PERANGKAT via Firestore (uploadKatalog memakai `.set()` tanpa
- * cek versi di sisi push; LWW hanya di sisi pull) adalah trade-off arsitektur yang SUDAH DIKETAHUI
- * dan TIDAK diklaim "diperbaiki" oleh test ini — yang dibuktikan hanyalah log mutasi tak pernah
- * hilang dan stok lokal tak pernah rusak.
- *
- * Memakai Room in-memory. Butuh perangkat/emulator (androidTest).
+ * Karena recordMutasiAtomic bersifat @Transaction dan terserialisasi, kedua baris mutasi
+ * selalu tersimpan dan stok akhir deterministik = 5, tak pernah minus. Memakai Room
+ * in-memory (androidTest).
  */
 @RunWith(AndroidJUnit4::class)
 class KatalogPushRaceTest {
@@ -75,7 +63,7 @@ class KatalogPushRaceTest {
         var trialStokKonsisten = 0
 
         repeat(25) { trial ->
-            // SKU unik per trial agar tidak menimpa baris ber-anak (log_mutasi FK sku_id) trial lalu.
+            // SKU unik per trial.
             val sku = "SKU-R$trial"
             katalogDao.upsert(katalog(sku, 10))
 
@@ -83,22 +71,21 @@ class KatalogPushRaceTest {
             val deviceB = async(Dispatchers.Default) { mutasiDao.recordMutasiAtomic(checkoutLog(sku, 2), -2) }
             val hasil = awaitAll(deviceA, deviceB)
 
-            // Audit trail: kedua operasi sukses (stok cukup) & kedua baris tercatat, tak ada yang hilang.
+            // Kedua operasi sukses dan kedua baris tercatat.
             assertEquals("Trial $trial: kedua checkout harus sukses", 2, hasil.count { it })
             val logs = mutasiDao.getAllMutasi().first().filter { it.sku_id == sku }
             assertEquals("Trial $trial: log_mutasi memuat kedua baris mutasi", 2, logs.size)
             if (logs.size == 2) trialAuditUtuh++
 
-            // Stok deterministik apa pun urutan commit; tidak pernah minus/rusak.
+            // Stok akhir deterministik, tidak minus.
             val stok = katalogDao.getKatalogBySku(sku)!!.stok_lokal
             assertEquals("Trial $trial: stok akhir = 10 - 3 - 2", 5, stok)
             assertTrue("Trial $trial: stok tidak boleh minus", stok >= 0)
             if (stok == 5) trialStokKonsisten++
         }
 
-        // Ringkasan kuantitatif utk dokumentasi (dibaca lewat Logcat filter package:com.ta.konstruksi) —
-        // menggantikan Database Inspector, yang tidak sempat menyambung ke DB in-memory berumur pendek ini.
-        println("KatalogPushRaceTest — audit trail utuh: $trialAuditUtuh/25 trial (log_mutasi selalu 2 baris, tak pernah hilang)")
-        println("KatalogPushRaceTest — stok akhir konsisten: $trialStokKonsisten/25 trial (selalu 10-3-2=5, tak pernah minus/rusak)")
+        // Ringkasan hasil (dibaca lewat Logcat).
+        println("KatalogPushRaceTest — audit trail utuh: $trialAuditUtuh/25 trial")
+        println("KatalogPushRaceTest — stok akhir konsisten: $trialStokKonsisten/25 trial")
     }
 }

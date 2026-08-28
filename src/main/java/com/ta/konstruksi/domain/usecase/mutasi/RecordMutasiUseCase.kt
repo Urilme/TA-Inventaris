@@ -24,9 +24,7 @@ class RecordMutasiUseCase @Inject constructor(
         penanggungjawab: String,
         catatan: String? = null
     ): Result<Unit> {
-        // Field wajib (F3): penanggungjawab selalu; lokasi_penggunaan hanya untuk CHECK_OUT.
-        // Barang Masuk masuk ke stok gudang proyek (belum dipakai), sehingga lokasi tidak berlaku
-        // dan disimpan kosong.
+        // Field wajib: penanggungjawab selalu; lokasi_penggunaan hanya untuk CHECK_OUT.
         if (penanggungjawab.isBlank()) {
             return Result.failure(IllegalArgumentException("Penanggung jawab wajib diisi"))
         }
@@ -37,8 +35,7 @@ class RecordMutasiUseCase @Inject constructor(
         val item = katalogRepository.getKatalogBySku(skuId)
             ?: return Result.failure(IllegalArgumentException("Barang tidak ditemukan"))
 
-        // Aturan kondisi barang (F3): hanya kategori "alat" yang mewajibkan & menyimpan kondisi.
-        // bahan & scaffolding → kondisi selalu null (material habis pakai / bukan aset per-unit).
+        // Kondisi barang hanya wajib untuk kategori "alat"; bahan & scaffolding selalu null.
         val kondisiFinal: KondisiBarang? = if (item.kategori == KategoriBarang.ALAT) {
             kondisiBarang
                 ?: return Result.failure(IllegalArgumentException("Kondisi barang wajib diisi untuk kategori alat"))
@@ -67,7 +64,16 @@ class RecordMutasiUseCase @Inject constructor(
         // Insert log + update stok dalam satu transaksi atomik.
         // Guard di dalam transaksi (recordMutasiAtomic) mencegah stok minus saat mutasi bersamaan.
         val delta = if (jenisMutasi == JenisMutasi.CHECK_IN) jumlah else -jumlah
-        val tersimpan = mutasiRepository.recordMutasiWithStock(mutasi, delta)
+
+        // Tangkap kegagalan I/O Room (mis. penyimpanan penuh) dan ubah jadi Result.failure
+        // agar UI menampilkan pesan galat, bukan crash.
+        val tersimpan = try {
+            mutasiRepository.recordMutasiWithStock(mutasi, delta)
+        } catch (e: Exception) {
+            return Result.failure(
+                IllegalStateException("Gagal menyimpan mutasi: penyimpanan perangkat mungkin penuh", e)
+            )
+        }
         return if (tersimpan) {
             Result.success(Unit)
         } else {

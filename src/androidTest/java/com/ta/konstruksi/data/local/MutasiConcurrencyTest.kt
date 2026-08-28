@@ -25,11 +25,9 @@ import org.junit.runner.RunWith
 /**
  * Instrumented test untuk operasi atomik stok + mutasi ([LogMutasiDao.recordMutasiAtomic]).
  *
- * Fokus:
- * - CT-01: dua+ CHECK_OUT bersamaan pada SKU yang sama TIDAK boleh membuat stok minus.
- * - Guard stok mencegah check-out melebihi stok (transaksi dibatalkan, tak ada log tersimpan).
- *
- * Memakai Room in-memory agar cepat & terisolasi. Butuh perangkat/emulator (androidTest).
+ * Fokus: dua+ CHECK_OUT bersamaan pada SKU yang sama tidak boleh membuat stok minus, dan guard
+ * stok mencegah check-out melebihi stok (transaksi dibatalkan, tak ada log tersimpan).
+ * Memakai Room in-memory (androidTest).
  */
 @RunWith(AndroidJUnit4::class)
 class MutasiConcurrencyTest {
@@ -84,10 +82,9 @@ class MutasiConcurrencyTest {
     }
 
     /**
-     * CT-01 — Zero Data Loss di bawah konkurensi.
      * Stok awal 10, sepuluh CHECK_OUT bersamaan @2 unit (permintaan total 20).
      * Harapan: tepat 5 yang lolos (5×2=10), stok berakhir 0, tidak pernah minus,
-     * dan jumlah log = jumlah yang lolos (tak ada penulisan tanpa pengurangan stok).
+     * dan jumlah log = jumlah yang lolos.
      */
     @Test
     fun duaCheckoutBersamaan_tidakMembuatStokMinus() = runBlocking {

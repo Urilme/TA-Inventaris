@@ -29,6 +29,11 @@ local.properties
 
 # === Firebase (opsional — buka komentar bila tak ingin commit config) ===
 # google-services.json
+firestore-tests/node_modules/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+.firebase/
 
 # === Dokumen konteks Claude / panduan internal (jangan di-commit) ===
 CLAUDE.md
@@ -36,3 +41,5 @@ IMPLEMENTATION_GUIDE.md
 DOKUMEN_PENGENALAN_SISTEM_MITRA.html
 PANDUAN_DOKUMENTASI_PENGUJIAN.md
 SCREENSHOT_CHECKLIST.md
+PANDUAN_CONCURRENCY_TESTING_TERSISA.md
+PANDUAN_BLACKBOX_OTOMASI_TERSISA.md

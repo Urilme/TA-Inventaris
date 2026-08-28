@@ -97,6 +97,7 @@ dependencies {
     testImplementation(composeBom)
     testImplementation("androidx.compose.ui:ui-test-junit4")
     testImplementation("androidx.test.ext:junit:1.2.1")                       // runner AndroidJUnit4 (JVM)
+    testImplementation("androidx.work:work-testing:2.10.0")                   // TestListenableWorkerBuilder (No.41)
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test:core-ktx:1.6.1")
     androidTestImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")

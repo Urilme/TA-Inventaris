@@ -91,8 +91,10 @@ fun RiwayatScreen(
 ) {
     val riwayatList by viewModel.riwayatList.collectAsStateWithLifecycle()
     val filterState by viewModel.filterState.collectAsStateWithLifecycle()
+    val jenisFilter by viewModel.jenisFilter.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     var searchQuery by remember { mutableStateOf("") }
+    val adaFilterAktif = filterState != null || jenisFilter != null
 
     val filtered = riwayatList.filter {
         val sku = when (it) {
@@ -150,7 +152,8 @@ fun RiwayatScreen(
             // Filter chips
             LazyRow(
                 modifier = Modifier.fillMaxWidth().background(AppBackground).padding(horizontal = 16.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 item {
                     FilterChip(label = "Semua", selected = filterState == null, onClick = { viewModel.setFilter(null) })
@@ -165,6 +168,24 @@ fun RiwayatScreen(
                     FilterChipWithDot(
                         label = "Sinkron", dotColor = GreenMain, selected = filterState == SyncStatus.SYNCED,
                         onClick = { viewModel.setFilter(SyncStatus.SYNCED) }
+                    )
+                }
+                // Pemisah antara filter status sinkron dan filter jenis mutasi
+                item { FilterDivider() }
+                item {
+                    FilterChipWithDot(
+                        label = "Masuk", dotColor = GreenMain, selected = jenisFilter == JenisMutasi.CHECK_IN,
+                        onClick = {
+                            viewModel.setJenisFilter(if (jenisFilter == JenisMutasi.CHECK_IN) null else JenisMutasi.CHECK_IN)
+                        }
+                    )
+                }
+                item {
+                    FilterChipWithDot(
+                        label = "Keluar", dotColor = RedMain, selected = jenisFilter == JenisMutasi.CHECK_OUT,
+                        onClick = {
+                            viewModel.setJenisFilter(if (jenisFilter == JenisMutasi.CHECK_OUT) null else JenisMutasi.CHECK_OUT)
+                        }
                     )
                 }
             }
@@ -186,12 +207,12 @@ fun RiwayatScreen(
                         }
                         Spacer(Modifier.height(18.dp))
                         Text(
-                            if (filterState == null) "Belum ada riwayat" else "Tidak ada riwayat pada filter ini",
+                            if (!adaFilterAktif) "Belum ada riwayat" else "Tidak ada riwayat pada filter ini",
                             fontSize = 17.sp, fontWeight = FontWeight.Black, color = Navy
                         )
                         Spacer(Modifier.height(6.dp))
                         Text(
-                            if (filterState == null) "Semua mutasi & transfer yang kamu catat akan muncul di sini."
+                            if (!adaFilterAktif) "Semua mutasi & transfer yang kamu catat akan muncul di sini."
                             else "Coba ubah filter untuk melihat riwayat lainnya.",
                             fontSize = 13.sp, color = TextSubtle,
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center, lineHeight = 19.sp
@@ -438,6 +459,14 @@ private fun StatusTransferBadge(status: StatusTransfer) {
         Spacer(Modifier.width(6.dp))
         Text(label, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = fg)
     }
+}
+
+@Composable
+private fun FilterDivider() {
+    Box(
+        modifier = Modifier.padding(horizontal = 2.dp).size(width = 1.5.dp, height = 22.dp)
+            .clip(RoundedCornerShape(999.dp)).background(BorderLight)
+    )
 }
 
 @Composable

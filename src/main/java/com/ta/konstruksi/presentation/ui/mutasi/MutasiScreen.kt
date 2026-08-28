@@ -128,7 +128,7 @@ fun MutasiScreen(
     }
 
     val filteredItems = katalogList.filter { selectedKategori.isEmpty() || it.kategori == selectedKategori }
-    // Kondisi barang hanya relevan (dan wajib) untuk kategori "alat" (aturan F3)
+    // Kondisi barang hanya relevan (dan wajib) untuk kategori "alat".
     val isAlat = FormInput.isKondisiRequired(selectedItem?.kategori)
 
     LaunchedEffect(uiState) {

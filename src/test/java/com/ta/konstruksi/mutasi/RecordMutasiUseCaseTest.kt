@@ -14,9 +14,8 @@ import org.junit.Before
 import org.junit.Test
 
 /**
- * F3 — Pencatatan Mutasi. Aturan bisnis luring deterministik (§8):
- * stok tidak minus, kondisi_barang wajib utk alat & null utk bahan/scaffolding,
- * field wajib (penanggungjawab / lokasi_penggunaan), status awal PENDING.
+ * Uji aturan bisnis pencatatan mutasi: stok tidak minus, kondisi_barang wajib untuk alat
+ * & null untuk bahan/scaffolding, field wajib, status awal PENDING.
  */
 class RecordMutasiUseCaseTest {
 
@@ -133,5 +132,21 @@ class RecordMutasiUseCaseTest {
         val r = record(sku = "TIDAK-ADA")
         assertThat(r.isFailure).isTrue()
         assertThat(r.exceptionOrNull()!!.message).contains("Barang tidak ditemukan")
+    }
+
+    // ---- Kegagalan penyimpanan (mis. penyimpanan penuh) ----
+    // Mensimulasikan kegagalan I/O Room lewat FakeMutasiRepository.throwOnRecord, dan
+    // membuktikan use case menangkapnya lalu mengembalikan Result.failure (bukan crash).
+    @Test
+    fun `kegagalan penyimpanan akibat penyimpanan penuh tidak menyebabkan crash`() = runTest {
+        katalog.put(masterKatalog(stok = 10))
+        mutasi.throwOnRecord = java.io.IOException("disk penuh")
+
+        val r = record(jenis = JenisMutasi.CHECK_OUT, jumlah = 2)
+
+        assertThat(r.isFailure).isTrue()
+        assertThat(r.exceptionOrNull()!!.message).contains("Gagal menyimpan mutasi")
+        // Stok tidak berubah karena penyimpanan gagal sebelum sempat ter-commit.
+        assertThat(katalog.current("SKU-1")!!.stok_lokal).isEqualTo(10)
     }
 }

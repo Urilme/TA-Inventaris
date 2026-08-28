@@ -18,11 +18,7 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
 
-    /**
-     * Migrasi v1 → v2: menambahkan atribut baru pada tabel log_mutasi.
-     * Nilai DEFAULT wajib sama persis dengan @ColumnInfo(defaultValue=...) di LogMutasiEntity
-     * agar validasi skema Room lolos (JANGAN pakai fallbackToDestructiveMigration).
-     */
+    // v1 → v2: tambah kolom baru pada log_mutasi.
     val MIGRATION_1_2 = object : Migration(1, 2) {
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL("ALTER TABLE log_mutasi ADD COLUMN id_mandor TEXT NOT NULL DEFAULT ''")
@@ -33,18 +29,12 @@ object DatabaseModule {
         }
     }
 
-    /**
-     * Migrasi v2 → v3:
-     *  - master_katalog: tambah kolom stok_minimum (ambang peringatan Dashboard).
-     *  - log_mutasi: jadikan kondisi_barang NULLABLE (SQLite tak bisa melonggarkan NOT NULL
-     *    secara langsung, jadi tabel direkreasi lalu datanya disalin).
-     */
+    // v2 → v3: tambah stok_minimum; jadikan kondisi_barang nullable (tabel direkreasi).
     val MIGRATION_2_3 = object : Migration(2, 3) {
         override fun migrate(db: SupportSQLiteDatabase) {
-            // 1) Kolom stok_minimum pada master_katalog
             db.execSQL("ALTER TABLE master_katalog ADD COLUMN stok_minimum INTEGER NOT NULL DEFAULT 0")
 
-            // 2) Rekreasi log_mutasi dengan kondisi_barang nullable
+            // Rekreasi log_mutasi dengan kondisi_barang nullable
             db.execSQL(
                 """
                 CREATE TABLE log_mutasi_new (
@@ -81,31 +71,20 @@ object DatabaseModule {
         }
     }
 
-    /**
-     * Migrasi v3 → v4: model kepemilikan proyek.
-     *  - user_session: tambah id_proyek & nama_proyek (proyek yang ditugaskan ke mandor).
-     *  - master_katalog: tambah id_proyek (katalog difilter per proyek).
-     * Semua kolom baru NOT NULL DEFAULT '' agar cocok dgn @ColumnInfo(defaultValue = "").
-     */
+    // v3 → v4: tambah id_proyek/nama_proyek pada user_session & id_proyek pada master_katalog.
     val MIGRATION_3_4 = object : Migration(3, 4) {
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL("ALTER TABLE user_session ADD COLUMN id_proyek TEXT NOT NULL DEFAULT ''")
             db.execSQL("ALTER TABLE user_session ADD COLUMN nama_proyek TEXT NOT NULL DEFAULT ''")
             db.execSQL("ALTER TABLE master_katalog ADD COLUMN id_proyek TEXT NOT NULL DEFAULT ''")
 
-            // Backfill data lama ke proyek default ('PROYEK-UTAMA' = Constants.DEFAULT_PROYEK).
-            // Sebelum fitur ini hanya ada satu proyek implisit, jadi seluruh katalog & sesi
-            // yang sudah ada menjadi milik proyek default agar tidak "hilang" dari tampilan
-            // (yang kini disaring per proyek). Nilai di-hardcode karena migrasi harus statis.
+            // Backfill data lama ke proyek default.
             db.execSQL("UPDATE master_katalog SET id_proyek = 'PROYEK-UTAMA' WHERE id_proyek = ''")
             db.execSQL("UPDATE user_session SET id_proyek = 'PROYEK-UTAMA' WHERE id_proyek = ''")
         }
     }
 
-    /**
-     * Migrasi v4 → v5: tambah tabel `proyek` (registry proyek dari website admin, read-only).
-     * Struktur harus cocok dengan ProyekEntity agar validasi skema Room lolos.
-     */
+    // v4 → v5: tambah tabel proyek (registry read-only).
     val MIGRATION_4_5 = object : Migration(4, 5) {
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL(
@@ -117,11 +96,7 @@ object DatabaseModule {
         }
     }
 
-    /**
-     * Migrasi v5 → v6: transfer_proyek jadi self-describing — snapshot nama_barang/kategori/satuan
-     * agar penerima bisa menampilkan & memindahkan barang ke katalognya tanpa katalog proyek asal.
-     * defaultValue harus cocok dgn @ColumnInfo(defaultValue = "") di TransferProyekEntity.
-     */
+    // v5 → v6: transfer_proyek simpan snapshot nama_barang/kategori/satuan.
     val MIGRATION_5_6 = object : Migration(5, 6) {
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL("ALTER TABLE transfer_proyek ADD COLUMN nama_barang TEXT NOT NULL DEFAULT ''")
@@ -130,13 +105,7 @@ object DatabaseModule {
         }
     }
 
-    /**
-     * Migrasi v6 → v7: login berbasis username — kolom user_session.email → username.
-     * SQLite pada rentang Android target tidak menjamin ALTER TABLE DROP/RENAME COLUMN,
-     * jadi tabel direkreasi. Nilai username disalin dari bagian sebelum '@' pada email lama
-     * agar sesi luring yang sudah tersimpan tetap cocok saat login ulang.
-     * Struktur user_session_new harus persis sama dengan UserSessionEntity (v7).
-     */
+    // v6 → v7: ganti kolom email → username (tabel direkreasi, username disalin dari email lama).
     val MIGRATION_6_7 = object : Migration(6, 7) {
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL(
@@ -170,11 +139,54 @@ object DatabaseModule {
         }
     }
 
+    // v7 → v8: kursor delta per koleksi di user_session (mutasi & transfer, seed 0 agar riwayat
+    // lama ikut ditarik pada sync pertama) + hapus FK transfer_proyek → master_katalog supaya
+    // transfer bisa ditarik di perangkat penerima yang tak punya katalog sku asal.
+    val MIGRATION_7_8 = object : Migration(7, 8) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE user_session ADD COLUMN last_sync_mutasi INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE user_session ADD COLUMN last_sync_transfer INTEGER NOT NULL DEFAULT 0")
+
+            // Rekreasi transfer_proyek tanpa FOREIGN KEY (SQLite tak bisa drop FK via ALTER).
+            db.execSQL(
+                """
+                CREATE TABLE transfer_proyek_new (
+                    id_transfer TEXT NOT NULL,
+                    sku_id TEXT NOT NULL,
+                    nama_barang TEXT NOT NULL DEFAULT '',
+                    kategori TEXT NOT NULL DEFAULT '',
+                    satuan TEXT NOT NULL DEFAULT '',
+                    proyek_asal TEXT NOT NULL,
+                    proyek_tujuan TEXT NOT NULL,
+                    jumlah INTEGER NOT NULL,
+                    status_transfer TEXT NOT NULL,
+                    local_timestamp INTEGER NOT NULL,
+                    sync_status TEXT NOT NULL,
+                    PRIMARY KEY(id_transfer)
+                )
+                """.trimIndent()
+            )
+            db.execSQL(
+                """
+                INSERT INTO transfer_proyek_new (
+                    id_transfer, sku_id, nama_barang, kategori, satuan,
+                    proyek_asal, proyek_tujuan, jumlah, status_transfer, local_timestamp, sync_status
+                )
+                SELECT id_transfer, sku_id, nama_barang, kategori, satuan,
+                    proyek_asal, proyek_tujuan, jumlah, status_transfer, local_timestamp, sync_status
+                FROM transfer_proyek
+                """.trimIndent()
+            )
+            db.execSQL("DROP TABLE transfer_proyek")
+            db.execSQL("ALTER TABLE transfer_proyek_new RENAME TO transfer_proyek")
+        }
+    }
+
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): KonstruksiDatabase =
         Room.databaseBuilder(context, KonstruksiDatabase::class.java, Constants.DATABASE_NAME)
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
             .build()
 
     @Provides fun provideUserSessionDao(db: KonstruksiDatabase): UserSessionDao = db.userSessionDao()
