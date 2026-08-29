@@ -1,0 +1,37 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "katalog",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "id_proyek", "order": "ASCENDING" },
+        { "fieldPath": "server_timestamp", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "mutasi",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "id_proyek", "order": "ASCENDING" },
+        { "fieldPath": "server_timestamp", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "transfer",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "proyek_tujuan", "order": "ASCENDING" },
+        { "fieldPath": "server_timestamp", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "transfer",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "proyek_asal", "order": "ASCENDING" },
+        { "fieldPath": "server_timestamp", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

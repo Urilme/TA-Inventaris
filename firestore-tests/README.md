@@ -56,6 +56,37 @@ npm test
 
 Buka `http://localhost:4000` untuk Emulator UI.
 
+## Deploy Firestore Rules & Composite Indexes
+
+Sinkronisasi delta men-scoping data di sisi server: `pullKatalog`/`pullMutasi`
+memakai `whereEqualTo("id_proyek", ...)` dan `pullTransfer` memakai dua kueri
+`whereEqualTo("proyek_tujuan"/"proyek_asal", ...)`, semuanya dikombinasikan dengan
+`whereGreaterThan("server_timestamp", ...)`. **Kombinasi equality + inequality pada
+field berbeda WAJIB punya composite index** — tanpa index ter-deploy, kueri gagal di
+runtime (`FAILED_PRECONDITION: The query requires an index`).
+
+Index sudah didefinisikan di `../firestore.indexes.json` (4 index: katalog, mutasi,
+transfer×2) dan dirujuk oleh `../firebase.json`. Deploy dari root repo:
+
+```bash
+# Rules + indexes sekaligus:
+npx firebase-tools deploy --only firestore --project <PROJECT_ID_PRODUKSI>
+
+# Atau terpisah:
+npx firebase-tools deploy --only firestore:indexes --project <PROJECT_ID_PRODUKSI>
+npx firebase-tools deploy --only firestore:rules   --project <PROJECT_ID_PRODUKSI>
+```
+
+Ganti `<PROJECT_ID_PRODUKSI>` dengan project Firebase asli (mis. `inventaris-9f544`).
+Pembuatan index berjalan asinkron di server (bisa beberapa menit) — pantau statusnya
+di Firebase Console → Firestore → Indexes hingga **Enabled** sebelum rilis app.
+
+> Kompatibilitas dokumen lama: dokumen yang belum memiliki `id_proyek` tidak akan
+> ikut tertarik oleh `whereEqualTo` (bukan error, hanya terlewat). Karena setiap
+> unggahan dari app selalu menuliskan `id_proyek`, dokumen akan ter-scoping benar
+> setelah ter-sinkron ulang; dokumen lama yang tak pernah di-update perlu di-backfill
+> `id_proyek` satu kali (mis. lewat skrip admin) bila ingin tetap tertarik.
+
 ## Catatan penting
 
 - **Status: sudah dijalankan & LULUS (6/6).** Diuji di emulator nyata (Firestore

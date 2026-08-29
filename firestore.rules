@@ -1,48 +1,100 @@
 rules_version = '2';
 
 // ==========================================================================
-// Rules mensyaratkan autentikasi (request.auth != null) untuk semua akses.
-// Diperketat dari versi sebelumnya yang sempat TERBUKA total (if true) demi
-// kemudahan pengujian awal skripsi. Verifikasi sebelum pengetatan (Agustus
-// 2026): baik aplikasi mobile (TA-Inventaris, login via FirebaseAuth dengan
-// username->email sintetis @skn.app, sesi SDK dipertahankan secara lokal
-// utk mode luring) maupun website admin (TA-Web-Inventaris, seluruh akses
-// Firestore dibungkus ProtectedRoute setelah signInWithEmailAndPassword)
-// SELALU mengakses Firestore dalam konteks user yang sudah authenticated,
-// sehingga request.auth != null terpenuhi pada semua panggilan produksi.
+// Firestore Security Rules — otorisasi berbasis peran & proyek.
 //
-// Ini juga menegakkan Black-Box No. 45 (Penolakan Akun Dinonaktifkan):
-// begitu akun dicabut/dinonaktifkan admin, Firebase Auth menolak penerbitan
-// ID token baru (login online berikutnya gagal), sehingga permintaan
-// Firestore berikutnya otomatis tidak lagi menyertakan request.auth yang
-// valid dan ditolak rules ini. Batasan yang perlu dicatat: token yang SUDAH
-// terbit sebelum akun dinonaktifkan tetap kriptografis valid sampai masa
-// berlakunya habis (bawaan Firebase, bukan sesuatu yang bisa dikendalikan
-// dari rules), sehingga proteksi ini efektif pada percobaan LOGIN ULANG,
-// bukan pada sesi yang sedang berjalan aktif saat itu juga.
+// Evolusi: (1) TERBUKA total `if true`; (2) diperketat ke `request.auth != null`;
+// (3) versi ini — otorisasi granular per-peran & per-proyek.
+//
+// Model otorisasi memakai LOOKUP dokumen users/{uid} (role, id_proyek, nama_proyek).
+// TRADE-OFF vs custom claims: lookup ini menambah 1 dokumen dibaca per PERMINTAAN TULIS
+// (hasil get() di-cache dalam satu evaluasi rule, jadi 1 baca per request — bukan per
+// dokumen hasil query). Custom claims (request.auth.token.role/id_proyek) meniadakan
+// baca ekstra & lebih cepat, TAPI menuntut backend Admin SDK (setCustomUserClaims) saat
+// provisioning/pemindahan proyek, dan claim basi bertahan sampai token refresh (~1 jam).
+// Dipilih lookup karena arsitektur ini murni BaaS tanpa Cloud Function dan dokumen
+// users/{uid} sudah ada; migrasi ke custom claims disarankan bila skala tulis membesar.
+//
+// Menegakkan juga Black-Box No. 45: begitu akun dinonaktifkan admin, login ulang gagal
+// sehingga request berikutnya tak lagi membawa request.auth valid (token yang SUDAH
+// terbit tetap valid sampai kedaluwarsa alami — bawaan Firebase, di luar kendali rules).
 // ==========================================================================
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Hanya 4 koleksi yang dipakai aplikasi
-    match /katalog/{doc} {
-      allow read, write: if request.auth != null;
+    function isSignedIn() {
+      return request.auth != null;
     }
-    match /mutasi/{doc} {
-      allow read, write: if request.auth != null;
+    function userData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
-    match /transfer/{doc} {
-      allow read, write: if request.auth != null;
+    function isAdmin() {
+      return isSignedIn() && userData().role == 'admin';
     }
-    match /users/{doc} {
-      allow read, write: if request.auth != null;
+    function myProyek() {
+      return userData().id_proyek;
     }
-    // Registry proyek — app mobile hanya membaca; tulis dilakukan website admin.
-    match /proyek/{doc} {
-      allow read, write: if request.auth != null;
+    function myProyekNama() {
+      return userData().nama_proyek;
     }
 
-    // Koleksi lain tetap tertutup secara default (tidak ada match = ditolak)
+    // Registry proyek — mobile hanya BACA; tulis khusus admin (dikelola website admin).
+    match /proyek/{doc} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Profil pengguna — mandor hanya boleh membaca dokumennya sendiri, dan tidak boleh
+    // mengubah field role maupun id_proyek dirinya. Tulis penuh hanya untuk admin.
+    match /users/{userId} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() ||
+        (isSignedIn() && request.auth.uid == userId
+          && request.resource.data.role == resource.data.role
+          && request.resource.data.id_proyek == resource.data.id_proyek);
+    }
+
+    // Katalog & mutasi terikat id_proyek: mandor hanya boleh menulis dokumen proyeknya
+    // sendiri (baik data lama maupun baru harus id_proyek == proyek si mandor).
+    match /katalog/{doc} {
+      allow read: if isSignedIn();
+      allow create: if isAdmin() || (isSignedIn() && request.resource.data.id_proyek == myProyek());
+      allow update: if isAdmin() ||
+        (isSignedIn() && resource.data.id_proyek == myProyek() && request.resource.data.id_proyek == myProyek());
+      allow delete: if isAdmin() || (isSignedIn() && resource.data.id_proyek == myProyek());
+    }
+    match /mutasi/{doc} {
+      allow read: if isSignedIn();
+      allow create: if isAdmin() || (isSignedIn() && request.resource.data.id_proyek == myProyek());
+      allow update: if isAdmin() ||
+        (isSignedIn() && resource.data.id_proyek == myProyek() && request.resource.data.id_proyek == myProyek());
+      allow delete: if isAdmin() || (isSignedIn() && resource.data.id_proyek == myProyek());
+    }
+
+    // Transfer memakai NAMA proyek pada proyek_asal/proyek_tujuan. Pengirim (asal) boleh
+    // membuat & membatalkan; penerima (tujuan) boleh mengubah (konfirmasi penerimaan).
+    //
+    // Pada update, selain memeriksa hak (asal/tujuan = proyek si mandor) juga MENGUNCI
+    // field identitas transfer (proyek_asal, proyek_tujuan, jumlah, sku_id) agar tak berubah —
+    // hanya status_transfer (+ timestamp/sync) yang boleh bergerak. Tanpa penguncian ini,
+    // penerima sah bisa mengubah jumlah saat konfirmasi (mis. 2 → 999) sehingga stok tujuan
+    // membengkak. Alur app tetap lolos karena konfirmasi mengirim ulang nilai identitas
+    // yang sama persis dari snapshot yang sudah ditarik.
+    match /transfer/{doc} {
+      allow read: if isSignedIn();
+      allow create: if isAdmin() || (isSignedIn() && request.resource.data.proyek_asal == myProyekNama());
+      allow update: if isAdmin() ||
+        (isSignedIn()
+          && (resource.data.proyek_asal == myProyekNama() || resource.data.proyek_tujuan == myProyekNama())
+          && request.resource.data.proyek_asal   == resource.data.proyek_asal
+          && request.resource.data.proyek_tujuan == resource.data.proyek_tujuan
+          && request.resource.data.jumlah        == resource.data.jumlah
+          && request.resource.data.sku_id        == resource.data.sku_id);
+      allow delete: if isAdmin() || (isSignedIn() && resource.data.proyek_asal == myProyekNama());
+    }
+
+    // Koleksi lain tertutup secara default (tidak ada match = ditolak).
   }
 }
