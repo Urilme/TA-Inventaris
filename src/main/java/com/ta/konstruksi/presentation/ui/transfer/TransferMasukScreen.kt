@@ -26,8 +26,11 @@ import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -40,6 +43,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import androidx.navigation.compose.currentBackStackEntryAsState
 import com.ta.konstruksi.domain.model.TransferProyek
 import com.ta.konstruksi.presentation.navigation.Screen
 import com.ta.konstruksi.presentation.ui.component.NetworkBadge
@@ -75,6 +79,23 @@ fun TransferMasukScreen(
     val incomingTransfers = transferList.filter {
         it.status_transfer == StatusTransfer.IN_TRANSIT &&
             proyekAktif != null && it.proyek_tujuan.trim().equals(proyekAktif, ignoreCase = true)
+    }
+
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // Picu sinkronisasi sekali-jalan saat layar dibuka (A2 #3) — transfer masuk tampil lebih cepat.
+    LaunchedEffect(Unit) { viewModel.syncSekarang() }
+
+    // Umpan balik dari konfirmasi/pembatalan di TransferDetailScreen (dikirim via savedStateHandle).
+    val navEntry by navController.currentBackStackEntryAsState()
+    LaunchedEffect(navEntry) {
+        val handle = navEntry?.savedStateHandle ?: return@LaunchedEffect
+        handle.getStateFlow<String?>("transfer_msg", null).collect { msg ->
+            if (!msg.isNullOrBlank()) {
+                snackbarHostState.showSnackbar(msg)
+                handle["transfer_msg"] = null
+            }
+        }
     }
 
     Box(modifier = Modifier.fillMaxSize().background(AppBackground)) {
@@ -146,6 +167,11 @@ fun TransferMasukScreen(
                 }
             }
         }
+
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(16.dp)
+        )
     }
 }
 

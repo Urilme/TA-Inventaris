@@ -9,6 +9,10 @@ abstract class LogMutasiDao {
     @Query("SELECT * FROM log_mutasi ORDER BY local_timestamp DESC")
     abstract fun getAllMutasi(): Flow<List<LogMutasiEntity>>
 
+    // Riwayat per proyek + berpaginasi (B2/B3): hanya mutasi proyek aktif, terbaru dulu, dibatasi LIMIT.
+    @Query("SELECT * FROM log_mutasi WHERE id_proyek = :proyek ORDER BY local_timestamp DESC LIMIT :limit")
+    abstract fun getRiwayatMutasi(proyek: String, limit: Int): Flow<List<LogMutasiEntity>>
+
     @Query("SELECT * FROM log_mutasi WHERE id_transaksi = :id")
     abstract suspend fun getById(id: String): LogMutasiEntity?
 
@@ -22,6 +26,13 @@ abstract class LogMutasiDao {
     // Sertakan IN_TRANSIT agar item yang tersinkron terputus dipulihkan pada siklus berikutnya
     @Query("SELECT * FROM log_mutasi WHERE sync_status IN ('PENDING', 'IN_TRANSIT')")
     abstract suspend fun getPending(): List<LogMutasiEntity>
+
+    // Batch unggah terbatas (B1): cegah kehabisan waktu WorkManager saat antrean menumpuk.
+    @Query("SELECT * FROM log_mutasi WHERE sync_status IN ('PENDING', 'IN_TRANSIT') ORDER BY local_timestamp ASC LIMIT :limit")
+    abstract suspend fun getPendingBatch(limit: Int): List<LogMutasiEntity>
+
+    @Query("SELECT COUNT(*) FROM log_mutasi WHERE sync_status IN ('PENDING', 'IN_TRANSIT')")
+    abstract suspend fun countPending(): Int
 
     @Query("UPDATE log_mutasi SET sync_status = :status WHERE id_transaksi = :id")
     abstract suspend fun updateSyncStatus(id: String, status: String)

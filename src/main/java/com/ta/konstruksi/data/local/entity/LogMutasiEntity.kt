@@ -3,16 +3,29 @@ package com.ta.konstruksi.data.local.entity
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
 @Entity(
     tableName = "log_mutasi",
-    foreignKeys = [ForeignKey(
-        entity = MasterKatalogEntity::class,
-        parentColumns = ["sku_id"],
-        childColumns = ["sku_id"],
-        onDelete = ForeignKey.RESTRICT
-    )]
+    foreignKeys = [
+        ForeignKey(
+            entity = MasterKatalogEntity::class,
+            parentColumns = ["sku_id"],
+            childColumns = ["sku_id"],
+            onDelete = ForeignKey.RESTRICT
+        ),
+        // FK ke Proyek (v10): riwayat mutasi tidak boleh "yatim" dari proyek tempatnya terjadi.
+        // Lihat ProyekDao.replaceAll — proyek disegarkan via upsert, bukan hapus-semua, supaya
+        // RESTRICT ini tidak menggagalkan sinkronisasi registry proyek.
+        ForeignKey(
+            entity = ProyekEntity::class,
+            parentColumns = ["id_proyek"],
+            childColumns = ["id_proyek"],
+            onDelete = ForeignKey.RESTRICT
+        )
+    ],
+    indices = [Index("id_proyek")]
 )
 data class LogMutasiEntity(
     @PrimaryKey val id_transaksi: String,

@@ -5,6 +5,10 @@ object Constants {
     const val SYNC_WORK_TAG = "delta_sync_work"
     const val SYNC_INTERVAL_MINUTES = 15L
 
+    // Batas unggah per koleksi per satu siklus SyncWorker (mencegah kehabisan waktu ~10 menit
+    // WorkManager saat antrean PENDING menumpuk). Sisa dilanjutkan siklus berikutnya.
+    const val SYNC_BATCH_SIZE = 50
+
     // Domain sintetis untuk login berbasis username: "<username>@skn.app".
     const val AUTH_DOMAIN = "skn.app"
 

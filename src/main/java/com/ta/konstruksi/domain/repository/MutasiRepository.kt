@@ -6,6 +6,9 @@ import kotlinx.coroutines.flow.Flow
 interface MutasiRepository {
     fun getAllMutasi(): Flow<List<LogMutasi>>
 
+    /** Riwayat mutasi proyek aktif, terbaru dulu, dibatasi [limit] (paginasi Riwayat). */
+    fun getRiwayatMutasi(limit: Int): Flow<List<LogMutasi>>
+
     /**
      * Catat mutasi + perbarui stok secara atomik (satu transaksi Room).
      * @return true bila tersimpan; false bila stok tidak mencukupi.

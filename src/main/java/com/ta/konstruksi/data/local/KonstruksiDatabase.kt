@@ -13,7 +13,7 @@ import com.ta.konstruksi.data.local.entity.*
         TransferProyekEntity::class,
         ProyekEntity::class
     ],
-    version = 8,
+    version = 10,
     exportSchema = true
 )
 abstract class KonstruksiDatabase : RoomDatabase() {

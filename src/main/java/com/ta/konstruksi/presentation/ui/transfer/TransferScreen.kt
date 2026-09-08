@@ -95,17 +95,31 @@ fun TransferScreen(
     var jumlah by remember { mutableIntStateOf(1) }
     var showConfirm by remember { mutableStateOf(false) }
     var showBarangPicker by remember { mutableStateOf(false) }
+    // id_transfer dibangkitkan SEKALI saat dialog konfirmasi dibuka, lalu dipakai ulang oleh setiap
+    // ketukan tombol "Ya, Kirim" — sehingga spam klik idempoten (ditolak by-id di DAO).
+    var idTransfer by remember { mutableStateOf("") }
     val filteredItems = katalogList.filter { selectedKategori.isEmpty() || it.kategori == selectedKategori }
 
     LaunchedEffect(uiState) {
-        if (uiState is TransferUiState.Success) {
-            snackbarHostState.showSnackbar("Transfer berhasil dibuat — Dalam Perjalanan")
-            viewModel.reset()
-            onBack()
-        }
-        if (uiState is TransferUiState.Error) {
-            showConfirm = false
-            snackbarHostState.showSnackbar((uiState as TransferUiState.Error).message)
+        when (val s = uiState) {
+            is TransferUiState.Success -> {
+                // Tutup dialog SEKETIKA, beri umpan balik ringkas, lalu kosongkan formulir.
+                showConfirm = false
+                val ringkasan = selectedItem?.let { "${it.nama_barang} ×$jumlah → $proyekTujuan" }
+                selectedItem = null
+                proyekTujuan = ""
+                jumlah = 1
+                viewModel.reset()
+                snackbarHostState.showSnackbar(
+                    ringkasan?.let { "Transfer dikirim: $it — Dalam Perjalanan" }
+                        ?: "Transfer berhasil dibuat — Dalam Perjalanan"
+                )
+            }
+            is TransferUiState.Error -> {
+                showConfirm = false
+                snackbarHostState.showSnackbar(s.message)
+            }
+            else -> {}
         }
     }
 
@@ -267,7 +281,10 @@ fun TransferScreen(
                 Column(
                     modifier = Modifier.fillMaxWidth().height(62.dp).clip(RoundedCornerShape(14.dp))
                         .background(if (canSend) Navy else Color(0xFFB0BEC5))
-                        .clickable(enabled = canSend) { showConfirm = true },
+                        .clickable(enabled = canSend) {
+                            idTransfer = viewModel.generateTransferId()   // sekali per pembukaan dialog
+                            showConfirm = true
+                        },
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
@@ -295,8 +312,9 @@ fun TransferScreen(
                             isProcessing = uiState is TransferUiState.Loading,
                             onDismiss = { showConfirm = false },
                             onConfirm = {
-                                // kirim item utuh agar transfer membawa snapshot barang (nama/kategori/satuan)
-                                viewModel.createTransfer(item, proyekTujuan.trim(), jumlah, proyekAsal)
+                                // kirim item utuh agar transfer membawa snapshot barang (nama/kategori/satuan);
+                                // idTransfer sama untuk tiap ketukan → idempoten
+                                viewModel.createTransfer(item, proyekTujuan.trim(), jumlah, proyekAsal, idTransfer)
                             },
                             content = {
                                 Column(

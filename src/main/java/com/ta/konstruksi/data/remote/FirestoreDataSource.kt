@@ -4,6 +4,7 @@ import com.google.firebase.Timestamp
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
 import com.ta.konstruksi.data.local.entity.LogMutasiEntity
 import com.ta.konstruksi.data.local.entity.MasterKatalogEntity
 import com.ta.konstruksi.data.local.entity.ProyekEntity
@@ -78,15 +79,16 @@ class FirestoreDataSource @Inject constructor(
     }
 
     /**
-     * Ambil katalog yang berubah setelah [sinceServerMillis] (delta sync), lalu saring ke
-     * [idProyek]. Bila 0, tarik seluruh katalog. Penyaringan proyek di sisi klien.
+     * Ambil katalog yang berubah setelah [sinceServerMillis] (delta sync), DISARING DI SERVER ke
+     * [idProyek] via whereEqualTo — hemat kuota & biaya baca (tak mengunduh katalog proyek lain).
+     * Bila [idProyek] kosong, tarik seluruh katalog. Kombinasi whereEqualTo + whereGreaterThan
+     * memerlukan composite index (lihat firestore.indexes.json).
      */
     suspend fun pullKatalog(sinceServerMillis: Long, idProyek: String): PullResult {
-        val collection = firestore.collection(Constants.COLLECTION_KATALOG)
-        val query = if (sinceServerMillis > 0L) {
-            collection.whereGreaterThan("server_timestamp", Timestamp(Date(sinceServerMillis)))
-        } else {
-            collection
+        var query: Query = firestore.collection(Constants.COLLECTION_KATALOG)
+        if (idProyek.isNotBlank()) query = query.whereEqualTo("id_proyek", idProyek)
+        if (sinceServerMillis > 0L) {
+            query = query.whereGreaterThan("server_timestamp", Timestamp(Date(sinceServerMillis)))
         }
         val snapshot = query.get().await()
 
@@ -95,22 +97,21 @@ class FirestoreDataSource @Inject constructor(
         snapshot.documents.forEach { doc ->
             val serverMillis = doc.getTimestamp("server_timestamp")?.toDate()?.time ?: 0L
             if (serverMillis > latest) latest = serverMillis
-            val entity = doc.toKatalogEntity() ?: return@forEach
-            if (idProyek.isBlank() || entity.id_proyek == idProyek) items.add(entity)
+            doc.toKatalogEntity()?.let { items.add(it) }
         }
         return PullResult(items, latest)
     }
 
     /**
-     * Ambil mutasi yang berubah setelah [sinceServerMillis] (delta sync), disaring ke [idProyek]
-     * milik mandor. Penyaringan proyek di sisi klien. Bila 0, tarik seluruh riwayat.
+     * Ambil mutasi yang berubah setelah [sinceServerMillis] (delta sync), DISARING DI SERVER ke
+     * [idProyek] milik mandor via whereEqualTo. Bila kosong, tarik seluruh riwayat. Kombinasi
+     * whereEqualTo + whereGreaterThan memerlukan composite index (firestore.indexes.json).
      */
     suspend fun pullMutasi(sinceServerMillis: Long, idProyek: String): MutasiPullResult {
-        val collection = firestore.collection(Constants.COLLECTION_MUTASI)
-        val query = if (sinceServerMillis > 0L) {
-            collection.whereGreaterThan("server_timestamp", Timestamp(Date(sinceServerMillis)))
-        } else {
-            collection
+        var query: Query = firestore.collection(Constants.COLLECTION_MUTASI)
+        if (idProyek.isNotBlank()) query = query.whereEqualTo("id_proyek", idProyek)
+        if (sinceServerMillis > 0L) {
+            query = query.whereGreaterThan("server_timestamp", Timestamp(Date(sinceServerMillis)))
         }
         val snapshot = query.get().await()
 
@@ -119,39 +120,45 @@ class FirestoreDataSource @Inject constructor(
         snapshot.documents.forEach { doc ->
             val serverMillis = doc.getTimestamp("server_timestamp")?.toDate()?.time ?: 0L
             if (serverMillis > latest) latest = serverMillis
-            val entity = doc.toMutasiEntity() ?: return@forEach
-            if (idProyek.isBlank() || entity.id_proyek == idProyek) items.add(entity)
+            doc.toMutasiEntity()?.let { items.add(it) }
         }
         return MutasiPullResult(items, latest)
     }
 
     /**
-     * Ambil transfer yang berubah setelah [sinceServerMillis] (delta sync), disaring ke transfer
-     * yang relevan bagi [namaProyekAktif] — sebagai tujuan (agar penerima melihat transfer masuk)
-     * ATAU asal (agar pengirim melihat perubahan status SELESAI/DIBATALKAN). Dokumen menyimpan
-     * NAMA proyek pada proyek_asal/proyek_tujuan, jadi filter memakai nama, bukan id.
+     * Ambil transfer yang relevan bagi [namaProyekAktif] — sebagai tujuan (agar penerima melihat
+     * transfer masuk) ATAU asal (agar pengirim melihat perubahan status SELESAI/DIBATALKAN).
+     * Firestore tak mendukung OR lintas field dalam satu kueri, jadi dipakai DUA kueri whereEqualTo
+     * TERSARING DI SERVER (proyek_tujuan, lalu proyek_asal) yang digabung & didedup di klien. Dokumen
+     * menyimpan NAMA proyek, jadi filter memakai nama. Tiap kueri (whereEqualTo + whereGreaterThan)
+     * memerlukan composite index (firestore.indexes.json).
      */
     suspend fun pullTransfer(sinceServerMillis: Long, namaProyekAktif: String): TransferPullResult {
-        val collection = firestore.collection(Constants.COLLECTION_TRANSFER)
-        val query = if (sinceServerMillis > 0L) {
-            collection.whereGreaterThan("server_timestamp", Timestamp(Date(sinceServerMillis)))
-        } else {
-            collection
-        }
-        val snapshot = query.get().await()
-
         var latest = sinceServerMillis
-        val items = mutableListOf<TransferProyekEntity>()
-        snapshot.documents.forEach { doc ->
-            val serverMillis = doc.getTimestamp("server_timestamp")?.toDate()?.time ?: 0L
-            if (serverMillis > latest) latest = serverMillis
-            val entity = doc.toTransferEntity() ?: return@forEach
-            val relevan = namaProyekAktif.isBlank() ||
-                entity.proyek_tujuan.trim().equals(namaProyekAktif, ignoreCase = true) ||
-                entity.proyek_asal.trim().equals(namaProyekAktif, ignoreCase = true)
-            if (relevan) items.add(entity)
+        val hasil = LinkedHashMap<String, TransferProyekEntity>()   // dedup by id_transfer
+
+        fun serap(docs: List<DocumentSnapshot>) {
+            docs.forEach { doc ->
+                val serverMillis = doc.getTimestamp("server_timestamp")?.toDate()?.time ?: 0L
+                if (serverMillis > latest) latest = serverMillis
+                doc.toTransferEntity()?.let { hasil[it.id_transfer] = it }
+            }
         }
-        return TransferPullResult(items, latest)
+
+        if (namaProyekAktif.isBlank()) {
+            // Tanpa acuan proyek (mis. sesi belum siap) — tarik delta apa adanya.
+            var q: Query = firestore.collection(Constants.COLLECTION_TRANSFER)
+            if (sinceServerMillis > 0L) q = q.whereGreaterThan("server_timestamp", Timestamp(Date(sinceServerMillis)))
+            serap(q.get().await().documents)
+        } else {
+            for (field in listOf("proyek_tujuan", "proyek_asal")) {
+                var q: Query = firestore.collection(Constants.COLLECTION_TRANSFER)
+                    .whereEqualTo(field, namaProyekAktif)
+                if (sinceServerMillis > 0L) q = q.whereGreaterThan("server_timestamp", Timestamp(Date(sinceServerMillis)))
+                serap(q.get().await().documents)
+            }
+        }
+        return TransferPullResult(hasil.values.toList(), latest)
     }
 
     /** Ambil seluruh registry proyek (kecil, read-only) — ditarik penuh tiap sync. */

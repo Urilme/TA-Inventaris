@@ -7,6 +7,7 @@ import com.ta.konstruksi.domain.repository.AuthRepository
 import com.ta.konstruksi.domain.repository.KatalogRepository
 import com.ta.konstruksi.domain.repository.MutasiRepository
 import com.ta.konstruksi.domain.repository.TransferRepository
+import com.ta.konstruksi.domain.usecase.sync.TriggerSyncUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -27,7 +28,8 @@ class ProfileViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     katalogRepository: KatalogRepository,
     mutasiRepository: MutasiRepository,
-    transferRepository: TransferRepository
+    transferRepository: TransferRepository,
+    private val triggerSyncUseCase: TriggerSyncUseCase
 ) : ViewModel() {
 
     private val sessionFlow = flow { emit(authRepository.getLocalSession()) }
@@ -44,11 +46,30 @@ class ProfileViewModel @Inject constructor(
         ProfileUiState(session = session, pendingCount = pending)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ProfileUiState())
 
-    /** Bersihkan sesi (Firebase signOut + hapus Room). Navigasi ke Login ditangani UI. */
+    // Menandai proses logout berjalan (mencegah ketukan ganda; menampilkan spinner di dialog).
+    private val _loggingOut = MutableStateFlow(false)
+    val loggingOut: StateFlow<Boolean> = _loggingOut
+
+    /**
+     * Keluar akun. Bila masih ada data belum tersinkron, coba KIRIM dulu (best-effort) dan tunggu
+     * hasilnya sebelum sesi dihapus — TriggerSyncUseCase gagal cepat saat offline sehingga tetap
+     * lanjut logout. Setelah itu bersihkan sesi (Firebase signOut + hapus Room). Data PENDING yang
+     * belum sempat terkirim tetap tersimpan di Room dan baru bisa dikirim saat mandor yang sama
+     * masuk kembali di perangkat ini. Navigasi ke Login ditangani UI via [onDone].
+     */
     fun logout(onDone: () -> Unit) {
+        if (_loggingOut.value) return
         viewModelScope.launch {
-            try { authRepository.logout() } catch (_: Exception) {}
-            onDone()
+            _loggingOut.value = true
+            try {
+                if (uiState.value.pendingCount > 0) {
+                    runCatching { triggerSyncUseCase() }
+                }
+                runCatching { authRepository.logout() }
+                onDone()
+            } finally {
+                _loggingOut.value = false
+            }
         }
     }
 }

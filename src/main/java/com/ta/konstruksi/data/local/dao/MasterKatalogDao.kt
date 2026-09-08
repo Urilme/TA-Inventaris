@@ -48,6 +48,13 @@ abstract class MasterKatalogDao {
     @Query("SELECT * FROM master_katalog WHERE sync_status IN ('PENDING', 'IN_TRANSIT')")
     abstract suspend fun getPendingSync(): List<MasterKatalogEntity>
 
+    // Batch unggah terbatas (B1).
+    @Query("SELECT * FROM master_katalog WHERE sync_status IN ('PENDING', 'IN_TRANSIT') ORDER BY local_timestamp ASC LIMIT :limit")
+    abstract suspend fun getPendingSyncBatch(limit: Int): List<MasterKatalogEntity>
+
+    @Query("SELECT COUNT(*) FROM master_katalog WHERE sync_status IN ('PENDING', 'IN_TRANSIT')")
+    abstract suspend fun countPendingSync(): Int
+
     @Query("UPDATE master_katalog SET sync_status = :status WHERE sku_id = :skuId")
     abstract suspend fun updateSyncStatus(skuId: String, status: String)
 

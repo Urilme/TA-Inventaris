@@ -7,6 +7,7 @@ import com.ta.konstruksi.data.local.dao.UserSessionDao
 import com.ta.konstruksi.data.local.entity.LogMutasiEntity
 import com.ta.konstruksi.data.remote.FirestoreDataSource
 import com.ta.konstruksi.data.repository.SyncRepositoryImpl
+import com.ta.konstruksi.util.Constants
 import io.mockk.Runs
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -48,7 +49,7 @@ class SyncIdempotencyTest {
     @Test
     fun `retry memproses ulang item IN_TRANSIT dan mengunggah tepat sekali ke id deterministik`() = runTest {
         coEvery { userSessionDao.getSession() } returns null
-        coEvery { mutasiDao.getPending() } returns listOf(entity)
+        coEvery { mutasiDao.getPendingBatch(Constants.SYNC_BATCH_SIZE) } returns listOf(entity)
 
         val result = repo().syncPendingMutasi()
 
@@ -65,7 +66,7 @@ class SyncIdempotencyTest {
     @Test
     fun `sync diulang setelah gagal menulis ke id dokumen sama tanpa menduplikasi`() = runTest {
         coEvery { userSessionDao.getSession() } returns null
-        coEvery { mutasiDao.getPending() } returns listOf(entity)
+        coEvery { mutasiDao.getPendingBatch(Constants.SYNC_BATCH_SIZE) } returns listOf(entity)
 
         // Siklus 1 — unggah gagal (jaringan putus) → repository melakukan rollback ke PENDING.
         coEvery { firestore.uploadMutasi(any(), any()) } throws RuntimeException("network down")

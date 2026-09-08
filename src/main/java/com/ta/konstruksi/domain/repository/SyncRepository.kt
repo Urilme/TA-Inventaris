@@ -10,4 +10,7 @@ interface SyncRepository {
     suspend fun pullLatestProyek(): Result<Unit>
     suspend fun getLastSyncTimestamp(): Long
     suspend fun updateLastSyncTimestamp(timestamp: Long)
+
+    /** true bila masih ada baris PENDING/IN_TRANSIT tersisa (antrean melebihi satu batch). */
+    suspend fun hasPendingSync(): Boolean
 }

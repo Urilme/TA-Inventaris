@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -62,7 +63,11 @@ sealed class Screen(val route: String) {
 }
 
 @Composable
-fun AppNavigation(authViewModel: AuthViewModel = hiltViewModel()) {
+fun AppNavigation(
+    authViewModel: AuthViewModel = hiltViewModel(),
+    openTransferMasuk: Boolean = false,
+    onOpenTransferMasukConsumed: () -> Unit = {}
+) {
     val navController = rememberNavController()
     val isOnline = rememberIsOnline()
 
@@ -75,6 +80,15 @@ fun AppNavigation(authViewModel: AuthViewModel = hiltViewModel()) {
         return
     }
     val startDestination = if (startupLoggedIn == true) Screen.Dashboard.route else Screen.Login.route
+
+    // Notifikasi "aset masuk" diketuk → buka Transfer Masuk (hanya bila sudah masuk). Konsumsi
+    // sinyal setelah navigasi agar tidak berulang saat rekomposisi.
+    LaunchedEffect(openTransferMasuk, startupLoggedIn) {
+        if (openTransferMasuk && startupLoggedIn == true) {
+            navController.navigate(Screen.TransferMasuk.route) { launchSingleTop = true }
+            onOpenTransferMasukConsumed()
+        }
+    }
 
     NavHost(navController = navController, startDestination = startDestination) {
 
@@ -154,6 +168,11 @@ fun AppNavigation(authViewModel: AuthViewModel = hiltViewModel()) {
             TransferDetailScreen(
                 idTransfer = transferId,
                 onBack = { navController.popBackStack() },
+                onSuccess = { pesan ->
+                    // Bawa umpan balik ke layar sebelumnya (Transfer Masuk) sebagai snackbar.
+                    navController.previousBackStackEntry?.savedStateHandle?.set("transfer_msg", pesan)
+                    navController.popBackStack()
+                },
                 isOnline = isOnline
             )
         }

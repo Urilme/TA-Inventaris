@@ -7,6 +7,7 @@ import com.ta.konstruksi.data.local.dao.TransferProyekDao
 import com.ta.konstruksi.data.local.dao.UserSessionDao
 import com.ta.konstruksi.data.remote.FirestoreDataSource
 import com.ta.konstruksi.domain.repository.SyncRepository
+import com.ta.konstruksi.util.Constants
 import com.ta.konstruksi.util.SyncStatus
 import javax.inject.Inject
 
@@ -23,7 +24,7 @@ class SyncRepositoryImpl @Inject constructor(
     private suspend fun updatedBy(): String = userSessionDao.getSession()?.id_mandor.orEmpty()
 
     override suspend fun syncPendingKatalog(): Result<Int> = runCatching {
-        val pending = katalogDao.getPendingSync()
+        val pending = katalogDao.getPendingSyncBatch(Constants.SYNC_BATCH_SIZE)
         val by = updatedBy()
         // State machine: PENDING -> IN_TRANSIT (tandai dulu agar terlihat di UI)
         pending.forEach { katalogDao.updateSyncStatus(it.sku_id, SyncStatus.IN_TRANSIT.name) }
@@ -40,7 +41,7 @@ class SyncRepositoryImpl @Inject constructor(
     }
 
     override suspend fun syncPendingMutasi(): Result<Int> = runCatching {
-        val pending = mutasiDao.getPending()
+        val pending = mutasiDao.getPendingBatch(Constants.SYNC_BATCH_SIZE)
         val by = updatedBy()
         pending.forEach { mutasiDao.updateSyncStatus(it.id_transaksi, SyncStatus.IN_TRANSIT.name) }
         pending.forEach { entity ->
@@ -56,7 +57,7 @@ class SyncRepositoryImpl @Inject constructor(
     }
 
     override suspend fun syncPendingTransfer(): Result<Int> = runCatching {
-        val pending = transferDao.getPending()
+        val pending = transferDao.getPendingBatch(Constants.SYNC_BATCH_SIZE)
         val by = updatedBy()
         pending.forEach { transferDao.updateSyncStatus(it.id_transfer, SyncStatus.IN_TRANSIT.name) }
         pending.forEach { entity ->
@@ -150,6 +151,9 @@ class SyncRepositoryImpl @Inject constructor(
         val proyek = firestore.pullProyek()
         if (proyek.isNotEmpty()) proyekDao.replaceAll(proyek)
     }
+
+    override suspend fun hasPendingSync(): Boolean =
+        katalogDao.countPendingSync() > 0 || mutasiDao.countPending() > 0 || transferDao.countPending() > 0
 
     override suspend fun getLastSyncTimestamp(): Long =
         userSessionDao.getSession()?.last_sync_timestamp ?: 0L

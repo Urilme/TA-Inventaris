@@ -33,8 +33,10 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.MoveToInbox
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.SwapVert
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -82,14 +84,16 @@ import com.ta.konstruksi.presentation.ui.theme.TextSubtle
 import com.ta.konstruksi.presentation.viewmodel.DashboardViewModel
 import com.ta.konstruksi.presentation.viewmodel.PendingSyncItem
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DashboardScreen(    
+fun DashboardScreen(
     navController: NavController,
     isOnline: Boolean = false,
     viewModel: DashboardViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
 
     // Saat online dan masih ada backlog, dorong sinkronisasi otomatis (tanpa tombol manual)
     LaunchedEffect(isOnline, state.pendingCount) {
@@ -158,12 +162,18 @@ fun DashboardScreen(
             }
 
             // Content
+            Box(modifier = Modifier.weight(1f)) {
+                PullToRefreshBox(
+                    isRefreshing = isRefreshing,
+                    onRefresh = { viewModel.refresh() },
+                    modifier = Modifier.fillMaxSize()
+                ) {
             if (isLoading) {
-                DashboardSkeleton(modifier = Modifier.weight(1f).fillMaxWidth())
+                DashboardSkeleton(modifier = Modifier.fillMaxSize())
             } else
             Column(
                 modifier = Modifier
-                    .weight(1f)
+                    .fillMaxSize()
                     .verticalScroll(rememberScrollState())
                     .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 118.dp)
             ) {
@@ -272,6 +282,8 @@ fun DashboardScreen(
                             LowStockCard(item = item)
                         }
                     }
+                }
+            }
                 }
             }
         }

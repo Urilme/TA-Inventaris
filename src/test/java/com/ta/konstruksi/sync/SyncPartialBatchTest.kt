@@ -7,6 +7,7 @@ import com.ta.konstruksi.data.local.dao.UserSessionDao
 import com.ta.konstruksi.data.local.entity.LogMutasiEntity
 import com.ta.konstruksi.data.remote.FirestoreDataSource
 import com.ta.konstruksi.data.repository.SyncRepositoryImpl
+import com.ta.konstruksi.util.Constants
 import io.mockk.Runs
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -45,7 +46,7 @@ class SyncPartialBatchTest {
     fun `item gagal di tengah batch rollback ke PENDING dan item sesudahnya tetap IN_TRANSIT`() = runTest {
         val batch = (1..5).map { mutasi("TX$it") }
         coEvery { userSessionDao.getSession() } returns null
-        coEvery { mutasiDao.getPending() } returns batch
+        coEvery { mutasiDao.getPendingBatch(Constants.SYNC_BATCH_SIZE) } returns batch
 
         // Unggah TX3 gagal; sisanya sukses. Stub spesifik untuk TX3 didaftarkan terakhir agar menang.
         coEvery { firestore.uploadMutasi(any(), any()) } just Runs

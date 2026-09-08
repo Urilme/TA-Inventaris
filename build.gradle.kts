@@ -1,3 +1,6 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -5,6 +8,15 @@ plugins {
     alias(libs.plugins.hilt.android)
     alias(libs.plugins.ksp)
     alias(libs.plugins.google.services)
+    alias(libs.plugins.firebase.crashlytics)
+}
+
+// Kredensial penandatanganan rilis dibaca dari keystore.properties (di-.gitignore, tak pernah
+// di-commit). Bila berkas tak ada (mis. mesin dev/CI tanpa keystore), rilis ditandatangani debug
+// agar `assembleRelease` tetap berhasil untuk verifikasi build.
+val keystorePropsFile = rootProject.file("keystore.properties")
+val keystoreProps = Properties().apply {
+    if (keystorePropsFile.exists()) FileInputStream(keystorePropsFile).use { load(it) }
 }
 
 android {
@@ -18,6 +30,39 @@ android {
         versionCode = 1
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        create("release") {
+            if (keystorePropsFile.exists()) {
+                storeFile = file(keystoreProps.getProperty("storeFile"))
+                storePassword = keystoreProps.getProperty("storePassword")
+                keyAlias = keystoreProps.getProperty("keyAlias")
+                keyPassword = keystoreProps.getProperty("keyPassword")
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+            // Pakai keystore rilis bila tersedia; jika tidak, jatuh ke debug agar build tetap jalan.
+            signingConfig = if (keystorePropsFile.exists()) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
+            // Unggah mapping R8 ke Crashlytics dilakukan manual/CI, bukan saat build lokal, agar
+            // `assembleRelease` tetap mandiri (tanpa jaringan/kredensial). Aktifkan di pipeline rilis.
+            configure<com.google.firebase.crashlytics.buildtools.gradle.CrashlyticsExtension> {
+                mappingFileUploadEnabled = false
+            }
+        }
     }
 
     buildFeatures {
@@ -73,6 +118,9 @@ dependencies {
     implementation("androidx.room:room-ktx:$roomVersion")
     ksp("androidx.room:room-compiler:$roomVersion")
 
+    // AndroidX Core (NotificationCompat / NotificationManagerCompat / ContextCompat)
+    implementation("androidx.core:core-ktx:1.15.0")
+
     // WorkManager
     implementation("androidx.work:work-runtime-ktx:2.10.0")
 
@@ -80,6 +128,9 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:33.6.0"))
     implementation("com.google.firebase:firebase-auth-ktx")
     implementation("com.google.firebase:firebase-firestore-ktx")
+    // Pelaporan kerusakan (C5). Hanya stacktrace + info perangkat; TIDAK ada data inventaris/PII
+    // yang di-log (tak ada custom key/log berisi data pengguna).
+    implementation("com.google.firebase:firebase-crashlytics")
 
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")

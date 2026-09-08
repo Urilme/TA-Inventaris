@@ -11,33 +11,33 @@ Dinonaktifkan)**:
 ## Prasyarat
 
 1. **Node.js** (sudah kamu punya, karena `npm`/`node` dipakai proyek lain juga).
-2. **Java 21+** — Firestore/Auth emulator versi terbaru mensyaratkan JDK 21.
-   Cek dulu: `java -version`. Kalau masih Java 11/17, tidak perlu instal apa pun
-   kalau sudah ada Android Studio — pakai JDK 21 yang dibundel (JetBrains Runtime),
-   biasanya di `C:\Program Files\Android\Android Studio\jbr` (OpenJDK 21.x).
-   Arahkan `JAVA_HOME` ke sana **hanya untuk sesi terminal ini** (lihat contoh di
-   bawah), tanpa mengubah Java default sistem. Alternatif: instal JDK 21 dari
-   [Adoptium](https://adoptium.net).
-3. **Firebase CLI** — tidak perlu instal global, dipanggil lewat `npx` di script `npm run test:emulators`.
+2. **Java 11+** — cukup, tidak perlu Java 21. `package.json` sudah mengunci
+   `firebase-tools` ke versi `13.29.1` (bukan `npx firebase-tools` yang selalu
+   menarik versi terbaru): versi 13.x masih mensyaratkan Java 11+, sedangkan
+   `firebase-tools` 15.x ke atas mewajibkan Java 21+ dan bisa gagal dengan pesan
+   semacam "no longer supports Java version before 21" begitu `npx` menariknya.
+   Kalau masih ingin memakai versi terbaru: Android Studio sudah membawa JDK 21
+   sendiri (JetBrains Runtime) di `C:\Program Files\Android\Android Studio\jbr` —
+   arahkan `JAVA_HOME` ke sana untuk sesi terminal itu saja (lihat catatan di
+   bawah), tanpa mengubah Java default sistem.
+3. **Firebase CLI** — tidak perlu instal global; `npm install` menariknya sebagai
+   `devDependency` lokal (lihat poin 2), dipanggil otomatis lewat `npm run test:emulators`.
 
 ## Cara menjalankan
-
-Windows (PowerShell) — set `JAVA_HOME` ke JBR JDK 21 dulu untuk sesi ini:
-
-```powershell
-cd firestore-tests
-$env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
-$env:PATH = "$env:JAVA_HOME\bin;$env:PATH"
-npm install
-npm run test:emulators
-```
-
-macOS/Linux (kalau `java -version` sudah 21, cukup):
 
 ```bash
 cd firestore-tests
 npm install
 npm run test:emulators
+```
+
+Kalau tetap ingin memakai `firebase-tools` versi terbaru (Java 21+) alih-alih versi
+terkunci di atas, di Windows PowerShell set dulu `JAVA_HOME` ke JBR Android Studio
+untuk sesi ini:
+
+```powershell
+$env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
+$env:PATH = "$env:JAVA_HOME\bin;$env:PATH"
 ```
 
 Perintah kedua otomatis: menyalakan emulator Firestore (port 8080) + Auth

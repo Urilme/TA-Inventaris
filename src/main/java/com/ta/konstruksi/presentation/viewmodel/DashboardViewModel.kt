@@ -50,6 +50,13 @@ class DashboardViewModel @Inject constructor(
     /** Dorong sinkronisasi (mis. saat Dashboard dibuka dalam keadaan online dengan backlog). */
     fun requestSync() = syncScheduler.requestSync()
 
+    /** Status pekerjaan sync (ENQUEUED/RUNNING) — dipakai indikator gestur tarik-untuk-refresh. */
+    val isRefreshing: StateFlow<Boolean> = syncScheduler.observeSyncing()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    /** Dipicu gestur tarik-untuk-refresh; sinkronisasi tetap otomatis, ini murni mempercepat. */
+    fun refresh() = syncScheduler.requestSync()
+
     private val sessionFlow = flow { emit(authRepository.getLocalSession()) }
 
     // Menandai emisi pertama agar Dashboard bisa menampilkan indikator memuat awal

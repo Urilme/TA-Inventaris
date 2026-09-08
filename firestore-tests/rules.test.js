@@ -11,11 +11,17 @@
 
 const fs = require('fs');
 const path = require('path');
+const { setLogLevel } = require('firebase/firestore');
 const {
   initializeTestEnvironment,
   assertSucceeds,
   assertFails
 } = require('@firebase/rules-unit-testing');
+
+// Firestore SDK secara default mencetak setiap penolakan (assertFails) sebagai baris
+// "GrpcConnection ... PERMISSION_DENIED" ke console — bukan kegagalan, tapi bikin output
+// terminal sangat panjang dan tidak layak dijadikan screenshot dokumentasi. Dibungkam di sini.
+setLogLevel('silent');
 
 const PROJECT_ID = 'demo-inventaris-test';
 
@@ -174,5 +180,67 @@ describe('Transfer antar proyek', () => {
     await assertSucceeds(asB().collection('transfer').doc('TR-6').set({
       sku_id: 'SKU-1', proyek_asal: 'Proyek A', proyek_tujuan: 'Proyek B', jumlah: 2, status_transfer: 'SELESAI'
     }));
+  });
+});
+
+describe('Baca terikat proyek (C2)', () => {
+  beforeEach(async () => {
+    await seed(async (db) => {
+      await db.collection('katalog').doc('KAT-A').set({ id_proyek: 'PRJ-A', nama_barang: 'Semen' });
+      await db.collection('katalog').doc('KAT-B').set({ id_proyek: 'PRJ-B', nama_barang: 'Pasir' });
+      await db.collection('mutasi').doc('MX-A').set({ id_proyek: 'PRJ-A', jumlah: 1 });
+      await db.collection('mutasi').doc('MX-B').set({ id_proyek: 'PRJ-B', jumlah: 1 });
+      await db.collection('transfer').doc('TR-AB').set({
+        sku_id: 'S1', proyek_asal: 'Proyek A', proyek_tujuan: 'Proyek B', jumlah: 1, status_transfer: 'IN_TRANSIT'
+      });
+      await db.collection('transfer').doc('TR-CD').set({
+        sku_id: 'S1', proyek_asal: 'Proyek C', proyek_tujuan: 'Proyek D', jumlah: 1, status_transfer: 'IN_TRANSIT'
+      });
+    });
+  });
+
+  // --- Katalog ---
+  it('mandor A BOLEH membaca katalog proyeknya (get)', async () => {
+    await assertSucceeds(asA().collection('katalog').doc('KAT-A').get());
+  });
+  it('mandor A DITOLAK membaca katalog proyek lain (get)', async () => {
+    await assertFails(asA().collection('katalog').doc('KAT-B').get());
+  });
+  it('mandor A BOLEH query katalog yang difilter proyeknya', async () => {
+    await assertSucceeds(asA().collection('katalog').where('id_proyek', '==', 'PRJ-A').get());
+  });
+  it('mandor A DITOLAK query katalog tanpa filter proyek', async () => {
+    await assertFails(asA().collection('katalog').get());
+  });
+  it('admin BOLEH membaca katalog lintas proyek (monitoring website)', async () => {
+    await assertSucceeds(asAdmin().collection('katalog').get());
+  });
+
+  // --- Mutasi ---
+  it('mandor A DITOLAK membaca mutasi proyek lain (get)', async () => {
+    await assertFails(asA().collection('mutasi').doc('MX-B').get());
+  });
+  it('mandor A BOLEH query mutasi yang difilter proyeknya', async () => {
+    await assertSucceeds(asA().collection('mutasi').where('id_proyek', '==', 'PRJ-A').get());
+  });
+  it('admin BOLEH membaca mutasi lintas proyek', async () => {
+    await assertSucceeds(asAdmin().collection('mutasi').get());
+  });
+
+  // --- Transfer (asal ATAU tujuan = proyek) ---
+  it('mandor A BOLEH membaca transfer yang melibatkannya (get)', async () => {
+    await assertSucceeds(asA().collection('transfer').doc('TR-AB').get());   // asal = Proyek A
+  });
+  it('mandor A DITOLAK membaca transfer proyek lain (get)', async () => {
+    await assertFails(asA().collection('transfer').doc('TR-CD').get());      // C→D, tak melibatkan A
+  });
+  it('mandor B BOLEH query transfer masuk (proyek_tujuan = proyeknya)', async () => {
+    await assertSucceeds(asB().collection('transfer').where('proyek_tujuan', '==', 'Proyek B').get());
+  });
+  it('mandor A BOLEH query transfer keluar (proyek_asal = proyeknya)', async () => {
+    await assertSucceeds(asA().collection('transfer').where('proyek_asal', '==', 'Proyek A').get());
+  });
+  it('mandor A DITOLAK query transfer tanpa filter proyek', async () => {
+    await assertFails(asA().collection('transfer').get());
   });
 });

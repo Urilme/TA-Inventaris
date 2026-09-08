@@ -182,11 +182,111 @@ object DatabaseModule {
         }
     }
 
+    // v8 → v9: verifier kata sandi login luring (C1) — kolom pw_hash & pw_salt di user_session.
+    val MIGRATION_8_9 = object : Migration(8, 9) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE user_session ADD COLUMN pw_hash TEXT NOT NULL DEFAULT ''")
+            db.execSQL("ALTER TABLE user_session ADD COLUMN pw_salt TEXT NOT NULL DEFAULT ''")
+        }
+    }
+
+    // v9 → v10: tambah FK id_proyek pada master_katalog & log_mutasi ke tabel proyek (RESTRICT),
+    // supaya katalog/riwayat mutasi tidak bisa "yatim" dari proyek pemiliknya. Backfill dulu
+    // proyek yang belum tercatat lokal (id_proyek lama/kosong) sebelum FK ditegakkan, supaya
+    // instalasi lama yang datanya belum sinkron penuh tidak gagal migrasi.
+    val MIGRATION_9_10 = object : Migration(9, 10) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // Backfill placeholder proyek untuk id_proyek yatim (dari data lama sebelum FK ada).
+            db.execSQL(
+                """
+                INSERT OR IGNORE INTO proyek (id_proyek, nama_proyek)
+                SELECT DISTINCT id_proyek, 'Proyek Tidak Dikenal (data lama)' FROM master_katalog
+                """.trimIndent()
+            )
+            db.execSQL(
+                """
+                INSERT OR IGNORE INTO proyek (id_proyek, nama_proyek)
+                SELECT DISTINCT id_proyek, 'Proyek Tidak Dikenal (data lama)' FROM log_mutasi
+                """.trimIndent()
+            )
+
+            // Rekreasi master_katalog dengan FK id_proyek → proyek.
+            db.execSQL(
+                """
+                CREATE TABLE master_katalog_new (
+                    sku_id TEXT NOT NULL,
+                    kategori TEXT NOT NULL,
+                    nama_barang TEXT NOT NULL,
+                    satuan TEXT NOT NULL,
+                    stok_lokal INTEGER NOT NULL,
+                    stok_minimum INTEGER NOT NULL DEFAULT 0,
+                    id_proyek TEXT NOT NULL DEFAULT '',
+                    sync_status TEXT NOT NULL,
+                    local_timestamp INTEGER NOT NULL,
+                    PRIMARY KEY(sku_id),
+                    FOREIGN KEY(id_proyek) REFERENCES proyek(id_proyek) ON UPDATE NO ACTION ON DELETE RESTRICT
+                )
+                """.trimIndent()
+            )
+            db.execSQL(
+                """
+                INSERT INTO master_katalog_new (
+                    sku_id, kategori, nama_barang, satuan, stok_lokal, stok_minimum,
+                    id_proyek, sync_status, local_timestamp
+                )
+                SELECT sku_id, kategori, nama_barang, satuan, stok_lokal, stok_minimum,
+                    id_proyek, sync_status, local_timestamp
+                FROM master_katalog
+                """.trimIndent()
+            )
+            db.execSQL("DROP TABLE master_katalog")
+            db.execSQL("ALTER TABLE master_katalog_new RENAME TO master_katalog")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_master_katalog_id_proyek ON master_katalog(id_proyek)")
+
+            // Rekreasi log_mutasi: pertahankan FK sku_id, tambah FK id_proyek → proyek.
+            db.execSQL(
+                """
+                CREATE TABLE log_mutasi_new (
+                    id_transaksi TEXT NOT NULL,
+                    sku_id TEXT NOT NULL,
+                    id_mandor TEXT NOT NULL DEFAULT '',
+                    id_proyek TEXT NOT NULL DEFAULT '',
+                    jenis_mutasi TEXT NOT NULL,
+                    jumlah INTEGER NOT NULL,
+                    kondisi_barang TEXT,
+                    lokasi_penggunaan TEXT NOT NULL DEFAULT '',
+                    penanggungjawab TEXT NOT NULL DEFAULT '',
+                    catatan TEXT,
+                    local_timestamp INTEGER NOT NULL,
+                    sync_status TEXT NOT NULL,
+                    PRIMARY KEY(id_transaksi),
+                    FOREIGN KEY(sku_id) REFERENCES master_katalog(sku_id) ON UPDATE NO ACTION ON DELETE RESTRICT,
+                    FOREIGN KEY(id_proyek) REFERENCES proyek(id_proyek) ON UPDATE NO ACTION ON DELETE RESTRICT
+                )
+                """.trimIndent()
+            )
+            db.execSQL(
+                """
+                INSERT INTO log_mutasi_new (
+                    id_transaksi, sku_id, id_mandor, id_proyek, jenis_mutasi, jumlah,
+                    kondisi_barang, lokasi_penggunaan, penanggungjawab, catatan, local_timestamp, sync_status
+                )
+                SELECT id_transaksi, sku_id, id_mandor, id_proyek, jenis_mutasi, jumlah,
+                    kondisi_barang, lokasi_penggunaan, penanggungjawab, catatan, local_timestamp, sync_status
+                FROM log_mutasi
+                """.trimIndent()
+            )
+            db.execSQL("DROP TABLE log_mutasi")
+            db.execSQL("ALTER TABLE log_mutasi_new RENAME TO log_mutasi")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_log_mutasi_id_proyek ON log_mutasi(id_proyek)")
+        }
+    }
+
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): KonstruksiDatabase =
         Room.databaseBuilder(context, KonstruksiDatabase::class.java, Constants.DATABASE_NAME)
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
             .build()
 
     @Provides fun provideUserSessionDao(db: KonstruksiDatabase): UserSessionDao = db.userSessionDao()

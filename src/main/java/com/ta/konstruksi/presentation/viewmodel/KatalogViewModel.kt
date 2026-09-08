@@ -48,6 +48,13 @@ class KatalogViewModel @Inject constructor(
         .onEach { _initialLoaded.value = true }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    /** Status pekerjaan sync (ENQUEUED/RUNNING) — dipakai indikator gestur tarik-untuk-refresh. */
+    val isRefreshing: StateFlow<Boolean> = syncScheduler.observeSyncing()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    /** Dipicu gestur tarik-untuk-refresh; sinkronisasi tetap otomatis, ini murni mempercepat. */
+    fun refresh() = syncScheduler.requestSync()
+
     private val _uiState = MutableStateFlow<KatalogUiState>(KatalogUiState.Idle)
     val uiState: StateFlow<KatalogUiState> = _uiState
 

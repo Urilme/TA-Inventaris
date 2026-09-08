@@ -6,6 +6,7 @@ import com.ta.konstruksi.domain.model.Proyek
 import com.ta.konstruksi.domain.model.TransferProyek
 import com.ta.konstruksi.domain.model.UserSession
 import com.ta.konstruksi.domain.repository.AuthRepository
+import com.ta.konstruksi.domain.repository.HasilBuatTransfer
 import com.ta.konstruksi.domain.repository.KatalogRepository
 import com.ta.konstruksi.domain.repository.MutasiRepository
 import com.ta.konstruksi.domain.repository.ProyekRepository
@@ -19,6 +20,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
@@ -136,10 +138,19 @@ class FakeMutasiRepository(private val katalog: FakeKatalogRepository? = null) :
 
     // Mensimulasikan Room melempar exception I/O saat penyimpanan gagal.
     var throwOnRecord: Throwable? = null
+    // Proyek aktif untuk meniru penyaringan riwayat per proyek (B3). null = tanpa filter.
+    var activeProyek: String? = null
 
     fun emit(list: List<LogMutasi>) { recorded.clear(); recorded.addAll(list); flow.value = recorded.toList() }
 
     override fun getAllMutasi(): Flow<List<LogMutasi>> = flow
+
+    // Meniru getRiwayatMutasi DAO: filter proyek aktif + urut terbaru + LIMIT.
+    override fun getRiwayatMutasi(limit: Int): Flow<List<LogMutasi>> = flow.map { list ->
+        list.filter { activeProyek == null || it.id_proyek == activeProyek }
+            .sortedByDescending { it.local_timestamp }
+            .take(limit)
+    }
     override suspend fun recordMutasiWithStock(mutasi: LogMutasi, delta: Int): Boolean {
         throwOnRecord?.let { throw it }
         if (katalog != null) {
@@ -153,21 +164,85 @@ class FakeMutasiRepository(private val katalog: FakeKatalogRepository? = null) :
     override suspend fun markSynced(idTransaksi: String) {}
 }
 
-class FakeTransferRepository : TransferRepository {
+/**
+ * Fake transfer. Bila [katalog] diberikan, confirm/cancel meniru transaksi atomik DAO
+ * (guard status IN_TRANSIT + perubahan stok katalog dalam satu langkah).
+ */
+class FakeTransferRepository(private val katalog: FakeKatalogRepository? = null) : TransferRepository {
     val transfers = LinkedHashMap<String, TransferProyek>()
     private val flow = MutableStateFlow<List<TransferProyek>>(emptyList())
     private fun publish() { flow.value = transfers.values.toList() }
 
+    // Proyek aktif (nama) untuk meniru penyaringan riwayat per proyek (B3). null = tanpa filter.
+    var activeNama: String? = null
+
     fun seed(t: TransferProyek) { transfers[t.id_transfer] = t; publish() }
 
     override fun getAllTransfer(): Flow<List<TransferProyek>> = flow
-    override suspend fun createTransfer(transfer: TransferProyek) { transfers[transfer.id_transfer] = transfer; publish() }
+
+    // Meniru getRiwayatTransfer DAO: transfer melibatkan proyek aktif (asal/tujuan) + urut + LIMIT.
+    override fun getRiwayatTransfer(limit: Int): Flow<List<TransferProyek>> = flow.map { list ->
+        list.filter {
+            activeNama == null ||
+                it.proyek_asal.equals(activeNama, ignoreCase = true) ||
+                it.proyek_tujuan.equals(activeNama, ignoreCase = true)
+        }.sortedByDescending { it.local_timestamp }.take(limit)
+    }
+
+    // Meniru buatTransferAtomik DAO: idempoten by-id + kurangi stok proyek asal bila cukup.
+    override suspend fun createTransfer(transfer: TransferProyek): HasilBuatTransfer {
+        if (transfers.containsKey(transfer.id_transfer)) return HasilBuatTransfer.DUPLIKAT
+        if (katalog != null) {
+            val cukup = katalog.decrementStokLokalJikaCukup(transfer.sku_id, transfer.jumlah)
+            if (!cukup) return HasilBuatTransfer.STOK_KURANG
+        }
+        transfers[transfer.id_transfer] = transfer; publish()
+        return HasilBuatTransfer.SUKSES
+    }
     override suspend fun updateStatusTransfer(idTransfer: String, status: StatusTransfer) {
         transfers[idTransfer]?.let { transfers[idTransfer] = it.copy(status_transfer = status); publish() }
     }
+
+    override suspend fun confirmReceiveAtomic(idTransfer: String, idProyekPenerima: String): Boolean {
+        val t = transfers[idTransfer] ?: return false
+        if (t.status_transfer != StatusTransfer.IN_TRANSIT) return false   // guard: tolak konfirmasi ulang
+        katalog?.let { k ->
+            if (t.nama_barang.isBlank()) {
+                k.updateStokLokal(t.sku_id, t.jumlah)
+            } else {
+                val existing = k.findByProyekAndNama(idProyekPenerima, t.nama_barang)
+                if (existing != null) k.updateStokLokal(existing.sku_id, t.jumlah)
+                else k.upsertKatalog(
+                    MasterKatalog(
+                        sku_id = "SKU-NEW-$idTransfer",
+                        kategori = t.kategori, nama_barang = t.nama_barang, satuan = t.satuan,
+                        stok_lokal = t.jumlah, stok_minimum = 0, id_proyek = idProyekPenerima
+                    )
+                )
+            }
+        }
+        transfers[idTransfer] = t.copy(status_transfer = StatusTransfer.SELESAI, sync_status = SyncStatus.PENDING)
+        publish()
+        return true
+    }
+
+    override suspend fun cancelAtomic(idTransfer: String): Boolean {
+        val t = transfers[idTransfer] ?: return false
+        if (t.status_transfer != StatusTransfer.IN_TRANSIT) return false
+        katalog?.updateStokLokal(t.sku_id, t.jumlah)
+        transfers[idTransfer] = t.copy(status_transfer = StatusTransfer.DIBATALKAN, sync_status = SyncStatus.PENDING)
+        publish()
+        return true
+    }
+
     override suspend fun getPendingTransfer(): List<TransferProyek> =
         transfers.values.filter { it.sync_status == SyncStatus.PENDING }
     override suspend fun markSynced(idTransfer: String) {}
+    override suspend fun getIncomingInTransit(namaProyek: String): List<TransferProyek> =
+        transfers.values.filter {
+            it.status_transfer == StatusTransfer.IN_TRANSIT &&
+                it.proyek_tujuan.equals(namaProyek, ignoreCase = true)
+        }
 }
 
 class FakeProyekRepository(list: List<Proyek> = emptyList()) : ProyekRepository {

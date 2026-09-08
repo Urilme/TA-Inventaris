@@ -59,14 +59,16 @@ service cloud.firestore {
     // Katalog & mutasi terikat id_proyek: mandor hanya boleh menulis dokumen proyeknya
     // sendiri (baik data lama maupun baru harus id_proyek == proyek si mandor).
     match /katalog/{doc} {
-      allow read: if isSignedIn();
+      // Baca dibatasi per proyek: mandor hanya boleh membaca katalog proyeknya (kueri app selalu
+      // whereEqualTo id_proyek). Admin (website monitoring) tetap boleh membaca lintas proyek.
+      allow read: if isAdmin() || (isSignedIn() && resource.data.id_proyek == myProyek());
       allow create: if isAdmin() || (isSignedIn() && request.resource.data.id_proyek == myProyek());
       allow update: if isAdmin() ||
         (isSignedIn() && resource.data.id_proyek == myProyek() && request.resource.data.id_proyek == myProyek());
       allow delete: if isAdmin() || (isSignedIn() && resource.data.id_proyek == myProyek());
     }
     match /mutasi/{doc} {
-      allow read: if isSignedIn();
+      allow read: if isAdmin() || (isSignedIn() && resource.data.id_proyek == myProyek());
       allow create: if isAdmin() || (isSignedIn() && request.resource.data.id_proyek == myProyek());
       allow update: if isAdmin() ||
         (isSignedIn() && resource.data.id_proyek == myProyek() && request.resource.data.id_proyek == myProyek());
@@ -83,7 +85,11 @@ service cloud.firestore {
     // membengkak. Alur app tetap lolos karena konfirmasi mengirim ulang nilai identitas
     // yang sama persis dari snapshot yang sudah ditarik.
     match /transfer/{doc} {
-      allow read: if isSignedIn();
+      // Baca per proyek: mandor boleh membaca transfer yang MELIBATKAN proyeknya (asal ATAU tujuan);
+      // kueri app memakai dua whereEqualTo (proyek_tujuan / proyek_asal). Admin lintas proyek.
+      allow read: if isAdmin() ||
+        (isSignedIn() &&
+          (resource.data.proyek_asal == myProyekNama() || resource.data.proyek_tujuan == myProyekNama()));
       allow create: if isAdmin() || (isSignedIn() && request.resource.data.proyek_asal == myProyekNama());
       allow update: if isAdmin() ||
         (isSignedIn()

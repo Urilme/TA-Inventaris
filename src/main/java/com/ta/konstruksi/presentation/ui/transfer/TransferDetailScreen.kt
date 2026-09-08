@@ -30,6 +30,8 @@ import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -78,6 +80,7 @@ import java.util.Locale
 fun TransferDetailScreen(
     idTransfer: String,
     onBack: () -> Unit,
+    onSuccess: (String) -> Unit = {},
     isOnline: Boolean = false,
     viewModel: TransferViewModel = hiltViewModel()
 ) {
@@ -88,12 +91,24 @@ fun TransferDetailScreen(
     val katalogItem = transfer?.let { t -> katalogList.find { it.sku_id == t.sku_id } }
     var showConfirm by remember { mutableStateOf(false) }
     var showBatal by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    // Pesan sukses disiapkan saat aksi ditekan, lalu dibawa kembali ke Transfer Masuk sebagai snackbar.
+    var pesanSukses by remember { mutableStateOf("") }
 
-    // Kembali hanya setelah konfirmasi benar-benar tersimpan
     LaunchedEffect(uiState) {
-        if (uiState is TransferUiState.Success) {
-            viewModel.reset()
-            onBack()
+        when (val s = uiState) {
+            // Kembali hanya setelah konfirmasi/pembatalan benar-benar tersimpan; bawa umpan balik.
+            is TransferUiState.Success -> {
+                viewModel.reset()
+                onSuccess(pesanSukses)
+            }
+            // Tetap di layar; tutup dialog & tampilkan pesan error.
+            is TransferUiState.Error -> {
+                showConfirm = false
+                showBatal = false
+                snackbarHostState.showSnackbar(s.message)
+            }
+            else -> {}
         }
     }
 
@@ -270,7 +285,10 @@ fun TransferDetailScreen(
                         confirmIcon = Icons.Default.CheckCircle,
                         isProcessing = uiState is TransferUiState.Loading,
                         onDismiss = { showConfirm = false },
-                        onConfirm = { viewModel.confirmTransfer(transfer) },
+                        onConfirm = {
+                            pesanSukses = "Penerimaan dikonfirmasi: $namaBarang ×${transfer.jumlah} $satuan"
+                            viewModel.confirmTransfer(transfer)
+                        },
                         content = {
                             Column(
                                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
@@ -299,7 +317,10 @@ fun TransferDetailScreen(
                         confirmIcon = Icons.Default.Cancel,
                         isProcessing = uiState is TransferUiState.Loading,
                         onDismiss = { showBatal = false },
-                        onConfirm = { viewModel.cancelTransfer(transfer) },
+                        onConfirm = {
+                            pesanSukses = "Transfer dibatalkan: $namaBarang ×${transfer.jumlah} $satuan"
+                            viewModel.cancelTransfer(transfer)
+                        },
                         content = {
                             Column(
                                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
@@ -315,6 +336,11 @@ fun TransferDetailScreen(
                 }
             }
         }
+
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(16.dp)
+        )
     }
 }
 

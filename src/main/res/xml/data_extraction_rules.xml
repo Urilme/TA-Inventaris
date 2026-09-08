@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  C3 — cegah data inventaris & sesi (Room DB) ikut tersalin ke cadangan/transfer perangkat.
+  Berpasangan dengan android:allowBackup="false" (menonaktifkan auto-backup legacy). Untuk
+  Android 12+ (D2D transfer & cloud backup), kecualikan basis data & preferensi secara eksplisit.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="database" path="konstruksi_db" />
+        <exclude domain="sharedpref" path="transfer_notif.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="database" path="konstruksi_db" />
+        <exclude domain="sharedpref" path="transfer_notif.xml" />
+    </device-transfer>
+</data-extraction-rules>

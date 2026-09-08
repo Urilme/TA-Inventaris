@@ -7,6 +7,7 @@ import com.ta.konstruksi.domain.model.Proyek
 import com.ta.konstruksi.domain.model.TransferProyek
 import com.ta.konstruksi.domain.model.UserSession
 import com.ta.konstruksi.domain.repository.AuthRepository
+import com.ta.konstruksi.domain.repository.HasilBuatTransfer
 import com.ta.konstruksi.domain.repository.KatalogRepository
 import com.ta.konstruksi.domain.repository.ProyekRepository
 import com.ta.konstruksi.domain.repository.TransferRepository
@@ -63,20 +64,34 @@ class TransferViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<TransferUiState>(TransferUiState.Idle)
     val uiState: StateFlow<TransferUiState> = _uiState
 
-    fun createTransfer(item: MasterKatalog, proyekTujuan: String, jumlah: Int, proyekAsal: String) {
+    // Penjaga proses sinkron (diperiksa SEBELUM launch) — mencegah ketukan ganda lolos di jeda
+    // sebelum Compose merender ulang tombol nonaktif. Pola sama dengan ProfileViewModel.logout().
+    private val _busy = MutableStateFlow(false)
+    val busy: StateFlow<Boolean> = _busy
+
+    /**
+     * Bangkitkan id_transfer SEKALI saat dialog konfirmasi dibuka. Dengan id yang stabil lintas
+     * ketukan, [createTransfer] menjadi idempoten: ketukan kedua membawa id sama → ditolak di DAO
+     * tanpa mengurangi stok dua kali. Lihat [HasilBuatTransfer].
+     */
+    fun generateTransferId(): String = UuidGenerator.generateId()
+
+    fun createTransfer(item: MasterKatalog, proyekTujuan: String, jumlah: Int, proyekAsal: String, idTransfer: String) {
+        if (_busy.value) return
+        // Proyek tujuan tidak boleh sama dengan proyek asal (dijaga UI via dropdown, ditegakkan
+        // juga di domain agar bebas dari jalur input tak terduga). Diperiksa sinkron di awal.
+        if (proyekAsal.trim().equals(proyekTujuan.trim(), ignoreCase = true)) {
+            _uiState.value = TransferUiState.Error("Proyek tujuan tidak boleh sama dengan proyek asal")
+            return
+        }
+        _busy.value = true
+        _uiState.value = TransferUiState.Loading
         viewModelScope.launch {
-            // Proyek tujuan tidak boleh sama dengan proyek asal (dijaga UI via dropdown, ditegakkan
-            // juga di domain agar bebas dari jalur input tak terduga).
-            if (proyekAsal.trim().equals(proyekTujuan.trim(), ignoreCase = true)) {
-                _uiState.value = TransferUiState.Error("Proyek tujuan tidak boleh sama dengan proyek asal")
-                return@launch
-            }
-            _uiState.value = TransferUiState.Loading
             try {
                 // Transfer self-describing: bawa snapshot barang agar penerima bisa menampilkan &
                 // memindahkannya ke katalog proyeknya tanpa perlu katalog proyek asal.
                 val transfer = TransferProyek(
-                    id_transfer = UuidGenerator.generateId(),
+                    id_transfer = idTransfer,
                     sku_id = item.sku_id,
                     nama_barang = item.nama_barang,
                     kategori = item.kategori,
@@ -87,57 +102,54 @@ class TransferViewModel @Inject constructor(
                     status_transfer = StatusTransfer.IN_TRANSIT,
                     sync_status = SyncStatus.PENDING
                 )
-                // Kurangi stok proyek asal secara atomik; tolak bila stok tak mencukupi.
-                val stokCukup = katalogRepository.decrementStokLokalJikaCukup(item.sku_id, jumlah)
-                if (!stokCukup) {
-                    _uiState.value = TransferUiState.Error("Stok tidak mencukupi untuk transfer sebanyak $jumlah")
-                    return@launch
+                // Buat transfer + kurangi stok proyek asal secara ATOMIK & idempoten by-id.
+                when (transferRepository.createTransfer(transfer)) {
+                    HasilBuatTransfer.SUKSES -> {
+                        _uiState.value = TransferUiState.Success
+                        syncScheduler.requestSync()   // auto-sync bila online, ditunda bila offline
+                    }
+                    // Ketukan kedua (id sama): transfer sudah dibuat oleh ketukan pertama; anggap
+                    // sukses tanpa mengurangi stok lagi agar UI menutup dialog dengan bersih.
+                    HasilBuatTransfer.DUPLIKAT -> _uiState.value = TransferUiState.Success
+                    HasilBuatTransfer.STOK_KURANG ->
+                        _uiState.value = TransferUiState.Error("Stok tidak mencukupi untuk transfer sebanyak $jumlah")
                 }
-                transferRepository.createTransfer(transfer)
-                _uiState.value = TransferUiState.Success
-                syncScheduler.requestSync()   // auto-sync bila online, ditunda bila offline
             } catch (e: Exception) {
                 _uiState.value = TransferUiState.Error(e.message ?: "Gagal membuat transfer")
+            } finally {
+                _busy.value = false
             }
         }
     }
 
     fun confirmTransfer(transfer: TransferProyek) {
+        if (_busy.value) return
+        // Penjaga status di UI (cepat menolak snapshot yang jelas bukan IN_TRANSIT).
+        if (transfer.status_transfer != StatusTransfer.IN_TRANSIT) {
+            _uiState.value = TransferUiState.Error("Transfer sudah ${transfer.status_transfer.name.lowercase()}, tidak bisa dikonfirmasi")
+            return
+        }
+        _busy.value = true
+        _uiState.value = TransferUiState.Loading
         viewModelScope.launch {
-            _uiState.value = TransferUiState.Loading
             try {
-                // Barang benar-benar MASUK ke katalog proyek penerima (proyek aktif si mandor):
-                // tambah stok ke item sejenis bila sudah ada, atau buat entri katalog baru.
+                // Barang MASUK ke katalog proyek penerima. Guard status + tambah stok + set SELESAI
+                // dijalankan ATOMIK di DAO agar konfirmasi ganda / ulang tak menambah stok dua kali.
                 val proyekPenerima = _session.value?.id_proyek?.takeIf { it.isNotBlank() }
                     ?: authRepository.getLocalSession()?.id_proyek?.takeIf { it.isNotBlank() }
                     ?: Constants.DEFAULT_PROYEK
 
-                if (transfer.nama_barang.isBlank()) {
-                    // Transfer lama tanpa snapshot → perilaku lama (tambah stok pada sku asal)
-                    katalogRepository.updateStokLokal(transfer.sku_id, transfer.jumlah)
-                } else {
-                    val existing = katalogRepository.findByProyekAndNama(proyekPenerima, transfer.nama_barang)
-                    if (existing != null) {
-                        katalogRepository.updateStokLokal(existing.sku_id, transfer.jumlah)
-                    } else {
-                        katalogRepository.upsertKatalog(
-                            MasterKatalog(
-                                sku_id = UuidGenerator.generateSkuId(),
-                                kategori = transfer.kategori,
-                                nama_barang = transfer.nama_barang,
-                                satuan = transfer.satuan,
-                                stok_lokal = transfer.jumlah,
-                                stok_minimum = 0,
-                                id_proyek = proyekPenerima
-                            )
-                        )
-                    }
+                val berhasil = transferRepository.confirmReceiveAtomic(transfer.id_transfer, proyekPenerima)
+                if (!berhasil) {
+                    _uiState.value = TransferUiState.Error("Transfer sudah dikonfirmasi atau dibatalkan")
+                    return@launch
                 }
-                transferRepository.updateStatusTransfer(transfer.id_transfer, StatusTransfer.SELESAI)
                 _uiState.value = TransferUiState.Success
                 syncScheduler.requestSync()   // auto-sync bila online, ditunda bila offline
             } catch (e: Exception) {
                 _uiState.value = TransferUiState.Error(e.message ?: "Gagal konfirmasi")
+            } finally {
+                _busy.value = false
             }
         }
     }
@@ -148,23 +160,37 @@ class TransferViewModel @Inject constructor(
      * menjadi DIBATALKAN. Hanya berlaku selama transfer belum SELESAI.
      */
     fun cancelTransfer(transfer: TransferProyek) {
+        if (_busy.value) return
+        if (transfer.status_transfer != StatusTransfer.IN_TRANSIT) {
+            _uiState.value = TransferUiState.Error("Transfer sudah ${transfer.status_transfer.name.lowercase()}, tidak bisa dibatalkan")
+            return
+        }
+        _busy.value = true
+        _uiState.value = TransferUiState.Loading
         viewModelScope.launch {
-            if (transfer.status_transfer != StatusTransfer.IN_TRANSIT) {
-                _uiState.value = TransferUiState.Error("Transfer sudah ${transfer.status_transfer.name.lowercase()}, tidak bisa dibatalkan")
-                return@launch
-            }
-            _uiState.value = TransferUiState.Loading
             try {
-                // Kembalikan stok ke proyek asal — membatalkan pengurangan saat transfer dibuat
-                katalogRepository.updateStokLokal(transfer.sku_id, transfer.jumlah)
-                transferRepository.updateStatusTransfer(transfer.id_transfer, StatusTransfer.DIBATALKAN)
+                // Kembalikan stok ke proyek asal + set DIBATALKAN secara ATOMIK (guard status).
+                val berhasil = transferRepository.cancelAtomic(transfer.id_transfer)
+                if (!berhasil) {
+                    _uiState.value = TransferUiState.Error("Transfer sudah berubah status, tidak bisa dibatalkan")
+                    return@launch
+                }
                 _uiState.value = TransferUiState.Success
                 syncScheduler.requestSync()   // auto-sync bila online, ditunda bila offline
             } catch (e: Exception) {
                 _uiState.value = TransferUiState.Error(e.message ?: "Gagal membatalkan transfer")
+            } finally {
+                _busy.value = false
             }
         }
     }
 
     fun reset() { _uiState.value = TransferUiState.Idle }
+
+    /**
+     * Picu sinkronisasi sekali-jalan (expedited). Dipanggil saat layar Transfer Masuk dibuka agar
+     * transfer masuk tampil nyaris seketika tanpa menunggu siklus periodik 15 menit — melengkapi
+     * pemicu foreground di MainActivity. Tetap dalam kerangka delta sync via WorkManager.
+     */
+    fun syncSekarang() { syncScheduler.requestSync() }
 }

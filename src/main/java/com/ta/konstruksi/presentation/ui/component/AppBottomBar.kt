@@ -31,7 +31,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.LineHeightStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -153,19 +157,33 @@ private fun BarTab(
         Box(contentAlignment = Alignment.Center) {
             Icon(icon, contentDescription = label, tint = if (selected) Navy else TextSubtle, modifier = Modifier.size(24.dp))
             if (badgeCount > 0) {
+                val banyak = badgeCount > 9
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .offset(x = 11.dp, y = (-7).dp)
-                        .size(if (badgeCount > 9) 18.dp else 16.dp)
+                        .offset(x = 12.dp, y = (-8).dp)
+                        .size(if (banyak) 20.dp else 18.dp)
                         .clip(CircleShape)
                         .background(RedMain)
-                        .border(1.5.dp, Color.White, CircleShape),
+                        .border(2.dp, Color.White, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        if (badgeCount > 9) "9+" else badgeCount.toString(),
-                        fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color.White
+                        text = if (banyak) "9+" else badgeCount.toString(),
+                        color = Color.White,
+                        fontSize = if (banyak) 9.sp else 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                        maxLines = 1,
+                        // Matikan padding font & pusatkan tinggi baris agar angka benar-benar center
+                        // di dalam lingkaran kecil (tidak terpotong / melayang ke atas).
+                        style = TextStyle(
+                            platformStyle = PlatformTextStyle(includeFontPadding = false),
+                            lineHeightStyle = LineHeightStyle(
+                                alignment = LineHeightStyle.Alignment.Center,
+                                trim = LineHeightStyle.Trim.Both
+                            )
+                        )
                     )
                 }
             }

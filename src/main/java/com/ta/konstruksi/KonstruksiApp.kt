@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import androidx.work.WorkManager
+import com.ta.konstruksi.sync.TransferNotifier
 import com.ta.konstruksi.sync.worker.SyncWorker
 import com.ta.konstruksi.util.Constants
 import dagger.hilt.android.HiltAndroidApp
@@ -15,6 +16,9 @@ class KonstruksiApp : Application(), Configuration.Provider {
     @Inject
     lateinit var workerFactory: HiltWorkerFactory
 
+    @Inject
+    lateinit var transferNotifier: TransferNotifier
+
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()
             .setWorkerFactory(workerFactory)
@@ -22,6 +26,7 @@ class KonstruksiApp : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
+        transferNotifier.ensureChannel()   // channel notifikasi "aset masuk"
         schedulePeriodikSync()
     }
 

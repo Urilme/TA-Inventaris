@@ -32,9 +32,11 @@ import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -77,6 +79,7 @@ import com.ta.konstruksi.util.KategoriBarang
 import com.ta.konstruksi.util.SearchFilter
 import com.ta.konstruksi.util.SyncStatus
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun KatalogScreen(
     navController: NavController,
@@ -84,6 +87,7 @@ fun KatalogScreen(
 ) {
     val katalogList by viewModel.katalogList.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     var searchQuery by remember { mutableStateOf("") }
     var selectedKategori by remember { mutableStateOf<String?>(null) } // null = Semua
 
@@ -151,38 +155,46 @@ fun KatalogScreen(
                 }
             }
 
-            if (isLoading) {
-                ListSkeleton(modifier = Modifier.weight(1f).fillMaxWidth())
-            } else if (filtered.isEmpty()) {
-                val isFiltering = searchQuery.isNotBlank() || selectedKategori != null
-                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(40.dp)) {
-                        Icon(Icons.Default.Inventory, null, tint = Color(0xFFd0d8de), modifier = Modifier.size(64.dp))
-                        Spacer(Modifier.height(16.dp))
-                        Text(
-                            if (isFiltering) "Tidak ada hasil" else "Katalog kosong",
-                            fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFFa7b2bc)
-                        )
-                        Spacer(Modifier.height(6.dp))
-                        Text(
-                            if (isFiltering) "Tidak ada barang yang cocok dengan filter saat ini."
-                            else "Tekan tombol + untuk menambahkan barang baru ke katalog.",
-                            fontSize = 13.sp, color = TextSubtle, textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                        )
-                    }
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.weight(1f).padding(horizontal = 16.dp, vertical = 14.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+            Box(modifier = Modifier.weight(1f)) {
+                PullToRefreshBox(
+                    isRefreshing = isRefreshing,
+                    onRefresh = { viewModel.refresh() },
+                    modifier = Modifier.fillMaxSize()
                 ) {
-                    items(filtered) { item ->
-                        KatalogItemCard(
-                            item = item,
-                            onClick = { navController.navigate(Screen.DetailBarang.createRoute(item.sku_id)) }
-                        )
+                    if (isLoading) {
+                        ListSkeleton(modifier = Modifier.fillMaxSize())
+                    } else if (filtered.isEmpty()) {
+                        val isFiltering = searchQuery.isNotBlank() || selectedKategori != null
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(40.dp)) {
+                                Icon(Icons.Default.Inventory, null, tint = Color(0xFFd0d8de), modifier = Modifier.size(64.dp))
+                                Spacer(Modifier.height(16.dp))
+                                Text(
+                                    if (isFiltering) "Tidak ada hasil" else "Katalog kosong",
+                                    fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFFa7b2bc)
+                                )
+                                Spacer(Modifier.height(6.dp))
+                                Text(
+                                    if (isFiltering) "Tidak ada barang yang cocok dengan filter saat ini."
+                                    else "Tekan tombol + untuk menambahkan barang baru ke katalog.",
+                                    fontSize = 13.sp, color = TextSubtle, textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                )
+                            }
+                        }
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 14.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            items(filtered) { item ->
+                                KatalogItemCard(
+                                    item = item,
+                                    onClick = { navController.navigate(Screen.DetailBarang.createRoute(item.sku_id)) }
+                                )
+                            }
+                            item { Spacer(Modifier.height(118.dp)) }
+                        }
                     }
-                    item { Spacer(Modifier.height(118.dp)) }
                 }
             }
         }

@@ -8,7 +8,12 @@ import androidx.work.WorkerFactory
 import androidx.work.WorkerParameters
 import androidx.work.testing.TestListenableWorkerBuilder
 import com.google.common.truth.Truth.assertThat
+import com.ta.konstruksi.domain.repository.AuthRepository
+import com.ta.konstruksi.domain.repository.SyncRepository
+import com.ta.konstruksi.domain.repository.TransferRepository
 import com.ta.konstruksi.domain.usecase.sync.TriggerSyncUseCase
+import com.ta.konstruksi.sync.SyncScheduler
+import com.ta.konstruksi.sync.TransferNotifier
 import com.ta.konstruksi.sync.worker.SyncWorker
 import io.mockk.coEvery
 import io.mockk.mockk
@@ -34,12 +39,19 @@ class SyncWorkerTest {
         runAttemptCount: Int
     ): SyncWorker {
         val context = ApplicationProvider.getApplicationContext<Context>()
+        // Notifikasi transfer masuk tak relevan bagi keputusan retry — sesi null → jalur notify
+        // short-circuit. Dependensi diberi mock relaxed.
+        val auth = mockk<AuthRepository>(relaxed = true)
+        val transfer = mockk<TransferRepository>(relaxed = true)
+        val notifier = mockk<TransferNotifier>(relaxed = true)
+        val syncRepo = mockk<SyncRepository>(relaxed = true)   // hasPendingSync() → false (default)
+        val scheduler = mockk<SyncScheduler>(relaxed = true)
         val factory = object : WorkerFactory() {
             override fun createWorker(
                 appContext: Context,
                 workerClassName: String,
                 workerParameters: WorkerParameters
-            ) = SyncWorker(appContext, workerParameters, useCase)
+            ) = SyncWorker(appContext, workerParameters, useCase, auth, transfer, notifier, syncRepo, scheduler)
         }
         return TestListenableWorkerBuilder<SyncWorker>(context)
             .setWorkerFactory(factory)

@@ -11,6 +11,7 @@ import com.ta.konstruksi.data.remote.FirestoreDataSource
 import com.ta.konstruksi.domain.model.UserSession
 import com.ta.konstruksi.domain.repository.AuthRepository
 import com.ta.konstruksi.util.Constants
+import com.ta.konstruksi.util.PasswordHasher
 import com.ta.konstruksi.util.usernameToEmail
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
@@ -45,12 +46,16 @@ class AuthRepositoryImpl @Inject constructor(
 
             val token = runCatching { user.getIdToken(false).await().token }.getOrNull().orEmpty()
             val session = buatSesiDari(user, usernameBersih, token)
+            // Verifier kata sandi untuk login luring (C1): disegarkan tiap login daring sukses.
+            val verifier = PasswordHasher.hash(password)
             // Pertahankan kursor delta mutasi/transfer milik sesi lama (upsert REPLACE menimpa baris).
             val existing = userSessionDao.getSession()?.takeIf { it.id_mandor == user.uid }
             userSessionDao.upsert(
                 session.toEntity().copy(
                     last_sync_mutasi = existing?.last_sync_mutasi ?: 0L,
-                    last_sync_transfer = existing?.last_sync_transfer ?: 0L
+                    last_sync_transfer = existing?.last_sync_transfer ?: 0L,
+                    pw_hash = verifier.hashB64,
+                    pw_salt = verifier.saltB64
                 )
             )
             Result.success(session)
@@ -61,20 +66,30 @@ class AuthRepositoryImpl @Inject constructor(
             Result.failure(Exception("Username atau kata sandi salah"))
         } catch (e: FirebaseNetworkException) {
             // Luring: pakai sesi lokal bila cocok.
-            loginLuring(usernameBersih)
+            loginLuring(usernameBersih, password)
         } catch (e: Exception) {
             Result.failure(Exception(e.message ?: "Login gagal"))
         }
     }
 
-    /** Fallback luring: pakai sesi lokal bila username cocok dengan sesi terakhir yang tersimpan. */
-    private suspend fun loginLuring(username: String): Result<UserSession> {
-        val lokal = userSessionDao.getSession()
-        return if (lokal != null && lokal.username.equals(username, ignoreCase = true)) {
-            Result.success(lokal.toDomain())
-        } else {
-            Result.failure(Exception("Tidak ada koneksi. Login pertama memerlukan internet."))
+    /** Fallback luring: verifikasi sesi lokal (dipisah agar dapat diuji tanpa FirebaseAuth). */
+    private suspend fun loginLuring(username: String, password: String): Result<UserSession> =
+        verifikasiLuring(userSessionDao.getSession(), username, password)
+
+    /**
+     * Keputusan login luring (C1): sesi lokal dipakai bila username cocok DAN kata sandi lolos
+     * verifier. Sesi lama tanpa verifier (pw_hash/pw_salt kosong) memakai pencocokan username saja;
+     * verifier terisi otomatis saat login daring berikutnya. `internal` agar dapat diuji langsung.
+     */
+    internal fun verifikasiLuring(lokal: UserSessionEntity?, username: String, password: String): Result<UserSession> {
+        if (lokal == null || !lokal.username.equals(username, ignoreCase = true)) {
+            return Result.failure(Exception("Tidak ada koneksi. Login pertama memerlukan internet."))
         }
+        val punyaVerifier = lokal.pw_hash.isNotBlank() && lokal.pw_salt.isNotBlank()
+        if (punyaVerifier && !PasswordHasher.verify(password, lokal.pw_salt, lokal.pw_hash)) {
+            return Result.failure(Exception("Username atau kata sandi salah"))
+        }
+        return Result.success(lokal.toDomain())
     }
 
     override suspend fun logout() {

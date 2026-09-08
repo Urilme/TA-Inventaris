@@ -93,6 +93,7 @@ fun RiwayatScreen(
     val filterState by viewModel.filterState.collectAsStateWithLifecycle()
     val jenisFilter by viewModel.jenisFilter.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val canLoadMore by viewModel.canLoadMore.collectAsStateWithLifecycle()
     var searchQuery by remember { mutableStateOf("") }
     val adaFilterAktif = filterState != null || jenisFilter != null
 
@@ -226,6 +227,21 @@ fun RiwayatScreen(
                 ) {
                     items(filtered) { item ->
                         RiwayatCard(item = item)
+                    }
+                    // Paginasi (B2): muat halaman berikutnya bila masih ada sisa riwayat lebih lama.
+                    if (canLoadMore) {
+                        item {
+                            Box(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp), contentAlignment = Alignment.Center) {
+                                Text(
+                                    "Muat lebih banyak",
+                                    fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Navy,
+                                    modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(Color.White)
+                                        .border(1.5.dp, BorderLight, RoundedCornerShape(999.dp))
+                                        .clickable { viewModel.loadMore() }
+                                        .padding(horizontal = 20.dp, vertical = 10.dp)
+                                )
+                            }
+                        }
                     }
                     item { Spacer(Modifier.height(118.dp)) }
                 }

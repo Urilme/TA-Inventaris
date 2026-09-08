@@ -13,6 +13,7 @@ import com.ta.konstruksi.data.local.entity.TransferProyekEntity
 import com.ta.konstruksi.data.local.entity.UserSessionEntity
 import com.ta.konstruksi.data.remote.FirestoreDataSource
 import com.ta.konstruksi.data.repository.SyncRepositoryImpl
+import com.ta.konstruksi.util.Constants
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -51,7 +52,7 @@ class SyncRepositoryTest {
         auth_token = "tok", last_sync_timestamp = 0L,
         last_sync_mutasi = lastSyncMutasi, last_sync_transfer = lastSyncTransfer,
         id_proyek = idProyek, nama_proyek = namaProyek
-    )
+     )
 
     private fun katalog(sku: String) = MasterKatalogEntity(
         sku_id = sku, kategori = "bahan", nama_barang = "Semen", satuan = "sak",
@@ -78,7 +79,7 @@ class SyncRepositoryTest {
     @Test
     fun `sync mutasi PENDING sukses menandai SYNCED`() = runTest {
         coEvery { userSessionDao.getSession() } returns null
-        coEvery { mutasiDao.getPending() } returns listOf(entity)
+        coEvery { mutasiDao.getPendingBatch(Constants.SYNC_BATCH_SIZE) } returns listOf(entity)
 
         val result = repo().syncPendingMutasi()
 
@@ -90,13 +91,48 @@ class SyncRepositoryTest {
     @Test
     fun `sync mutasi gagal mengembalikan status ke PENDING`() = runTest {
         coEvery { userSessionDao.getSession() } returns null
-        coEvery { mutasiDao.getPending() } returns listOf(entity)
+        coEvery { mutasiDao.getPendingBatch(Constants.SYNC_BATCH_SIZE) } returns listOf(entity)
         coEvery { firestore.uploadMutasi(any(), any()) } throws RuntimeException("network down")
 
         val result = repo().syncPendingMutasi()
 
         assertThat(result.isFailure).isTrue()
         coVerify { mutasiDao.updateSyncStatus("TX1", "PENDING") }    // rollback
+    }
+
+    // ---- B1: batch unggah terbatas + deteksi sisa antrean ----
+
+    @Test
+    fun `sync mutasi hanya mengunggah satu batch (SYNC_BATCH_SIZE) per siklus`() = runTest {
+        val batch = (1..Constants.SYNC_BATCH_SIZE).map { entity.copy(id_transaksi = "TX$it") }
+        coEvery { userSessionDao.getSession() } returns null
+        coEvery { mutasiDao.getPendingBatch(Constants.SYNC_BATCH_SIZE) } returns batch
+
+        val result = repo().syncPendingMutasi()
+
+        assertThat(result.getOrNull()).isEqualTo(Constants.SYNC_BATCH_SIZE)
+        // Ambil TERBATAS lewat batch, bukan getPending() tak terbatas.
+        coVerify { mutasiDao.getPendingBatch(Constants.SYNC_BATCH_SIZE) }
+        coVerify(exactly = 0) { mutasiDao.getPending() }
+        coVerify(exactly = Constants.SYNC_BATCH_SIZE) { firestore.uploadMutasi(any(), any()) }
+    }
+
+    @Test
+    fun `hasPendingSync true bila salah satu koleksi masih menyisakan antrean`() = runTest {
+        coEvery { katalogDao.countPendingSync() } returns 0
+        coEvery { mutasiDao.countPending() } returns 3   // sisa > 0 → perlu siklus lanjutan
+        coEvery { transferDao.countPending() } returns 0
+
+        assertThat(repo().hasPendingSync()).isTrue()
+    }
+
+    @Test
+    fun `hasPendingSync false bila semua koleksi tuntas`() = runTest {
+        coEvery { katalogDao.countPendingSync() } returns 0
+        coEvery { mutasiDao.countPending() } returns 0
+        coEvery { transferDao.countPending() } returns 0
+
+        assertThat(repo().hasPendingSync()).isFalse()
     }
 
     @Test

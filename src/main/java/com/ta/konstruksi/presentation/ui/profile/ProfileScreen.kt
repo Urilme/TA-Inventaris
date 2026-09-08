@@ -70,6 +70,7 @@ fun ProfileScreen(
     viewModel: ProfileViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val loggingOut by viewModel.loggingOut.collectAsStateWithLifecycle()
     val session = state.session
 
     val context = LocalContext.current
@@ -205,23 +206,32 @@ fun ProfileScreen(
             }
         }
 
-        // Guard konfirmasi sebelum sesi lokal dihapus
+        // Guard konfirmasi sebelum sesi lokal dihapus — peringatkan bila ada data belum tersinkron
         if (showLogoutConfirm) {
+            val pending = state.pendingCount
+            val adaPending = pending > 0
             ConfirmActionDialog(
                 icon = Icons.AutoMirrored.Filled.Logout,
                 accent = RedMain,
                 accentBg = RedBg,
                 title = "Keluar dari Akun?",
-                subtitle = null,
-                message = "Sesi lokal akan dihapus. Untuk masuk kembali Anda perlu login ulang, dan login pertama setelah keluar memerlukan koneksi internet.",
-                confirmLabel = "Ya, Keluar",
+                subtitle = if (adaPending) "$pending perubahan belum terkirim" else null,
+                message = if (adaPending)
+                    "Ada $pending perubahan yang BELUM terkirim ke server. Bila perangkat online, aplikasi akan " +
+                        "mencoba mengirimnya lebih dulu sebelum keluar. Bila offline, data tetap tersimpan di " +
+                        "perangkat ini dan baru bisa terkirim setelah Anda (mandor yang sama) masuk kembali di " +
+                        "perangkat ini."
+                else
+                    "Sesi lokal akan dihapus. Untuk masuk kembali Anda perlu login ulang, dan login pertama " +
+                        "setelah keluar memerlukan koneksi internet.",
+                confirmLabel = if (adaPending) "Tetap Keluar" else "Ya, Keluar",
                 confirmColor = RedMain,
                 confirmIcon = Icons.AutoMirrored.Filled.Logout,
-                onDismiss = { showLogoutConfirm = false },
-                onConfirm = {
-                    showLogoutConfirm = false
-                    viewModel.logout(onLoggedOut)
-                }
+                isProcessing = loggingOut,
+                onDismiss = { if (!loggingOut) showLogoutConfirm = false },
+                // Biarkan dialog tampil (spinner) selagi sinkron+logout berjalan; UI berpindah
+                // ke Login lewat onLoggedOut saat selesai.
+                onConfirm = { viewModel.logout(onLoggedOut) }
             )
         }
     }

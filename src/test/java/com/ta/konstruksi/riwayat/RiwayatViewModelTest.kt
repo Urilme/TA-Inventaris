@@ -145,4 +145,74 @@ class RiwayatViewModelTest {
             cancelAndIgnoreRemainingEvents()
         }
     }
+
+    // ---- B2: paginasi (LIMIT + Muat lebih banyak) ----
+
+    @Test
+    fun `paginasi membatasi satu halaman dan loadMore memuat sisanya`() = runTest {
+        val katalog = FakeKatalogRepository().apply { put(masterKatalog(sku = "SKU-1", nama = "Semen")) }
+        val total = RiwayatViewModel.PAGE_SIZE + 5
+        val mutasi = FakeMutasiRepository().apply {
+            emit((1..total).map { logMutasi(id = "TX-$it", sku = "SKU-1", ts = it.toLong()) })
+        }
+        val vm = RiwayatViewModel(mutasi, FakeTransferRepository(), katalog)
+
+        vm.riwayatList.test {
+            var list = awaitItem()
+            while (list.size < RiwayatViewModel.PAGE_SIZE) list = awaitItem()
+            assertThat(list).hasSize(RiwayatViewModel.PAGE_SIZE)   // dibatasi satu halaman
+            assertThat(vm.canLoadMore.value).isTrue()
+
+            vm.loadMore()
+            while (list.size < total) list = awaitItem()
+            assertThat(list).hasSize(total)                        // sisa termuat
+            assertThat(vm.canLoadMore.value).isFalse()
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    // ---- B3: riwayat difilter per proyek aktif ----
+
+    @Test
+    fun `riwayat mutasi hanya menampilkan proyek aktif`() = runTest {
+        val katalog = FakeKatalogRepository().apply { put(masterKatalog(sku = "SKU-1", nama = "Semen")) }
+        val mutasi = FakeMutasiRepository().apply {
+            activeProyek = "PRJ-001"
+            emit(
+                listOf(
+                    logMutasi(id = "TX-MINE", sku = "SKU-1", ts = 100),                       // PRJ-001 (default)
+                    logMutasi(id = "TX-OTHER", sku = "SKU-1", ts = 150).copy(id_proyek = "PRJ-OTHER")
+                )
+            )
+        }
+        val vm = RiwayatViewModel(mutasi, FakeTransferRepository(), katalog)
+
+        vm.riwayatList.test {
+            var list = awaitItem()
+            while (list.isEmpty()) list = awaitItem()
+            val ids = list.filterIsInstance<RiwayatItem.Mutasi>().map { it.data.id_transaksi }
+            assertThat(ids).containsExactly("TX-MINE")             // proyek lain tidak muncul
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `riwayat transfer hanya yang melibatkan proyek aktif sebagai asal atau tujuan`() = runTest {
+        val katalog = FakeKatalogRepository().apply { put(masterKatalog(sku = "SKU-1", nama = "Semen")) }
+        val transfer = FakeTransferRepository().apply {
+            activeNama = "Proyek A"
+            seed(transferProyek(id = "TR-ASAL", sku = "SKU-1", asal = "Proyek A", tujuan = "Proyek B", ts = 100))
+            seed(transferProyek(id = "TR-TUJUAN", sku = "SKU-1", asal = "Proyek C", tujuan = "Proyek A", ts = 110))
+            seed(transferProyek(id = "TR-LAIN", sku = "SKU-1", asal = "Proyek C", tujuan = "Proyek D", ts = 120))
+        }
+        val vm = RiwayatViewModel(FakeMutasiRepository(), transfer, katalog)
+
+        vm.riwayatList.test {
+            var list = awaitItem()
+            while (list.size < 2) list = awaitItem()
+            val ids = list.filterIsInstance<RiwayatItem.Transfer>().map { it.data.id_transfer }
+            assertThat(ids).containsExactly("TR-ASAL", "TR-TUJUAN")   // TR-LAIN (proyek lain) tidak muncul
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
 }

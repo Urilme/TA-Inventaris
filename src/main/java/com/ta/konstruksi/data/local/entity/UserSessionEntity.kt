@@ -18,5 +18,9 @@ data class UserSessionEntity(
     @ColumnInfo(defaultValue = "0") val last_sync_transfer: Long = 0L,
     // Proyek yang ditugaskan ke mandor ini (dari Firestore users/{uid}).
     @ColumnInfo(defaultValue = "") val id_proyek: String = "",
-    @ColumnInfo(defaultValue = "") val nama_proyek: String = ""
+    @ColumnInfo(defaultValue = "") val nama_proyek: String = "",
+    // Verifier kata sandi untuk login LURING (C1): hash PBKDF2 ber-salt, BUKAN sandi terbaca.
+    // Diisi saat login daring; kosong pada sesi lama → login luring fallback ke cocok-username saja.
+    @ColumnInfo(defaultValue = "") val pw_hash: String = "",
+    @ColumnInfo(defaultValue = "") val pw_salt: String = ""
 )
